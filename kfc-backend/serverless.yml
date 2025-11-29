@@ -844,7 +844,7 @@ resources:
     AssetsBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: kfc-assets-${self:provider.stage}-${AWS::AccountId}
+        BucketName: kfc-assets-${self:provider.stage}-595645243021
         CorsConfiguration:
           CorsRules:
             - AllowedHeaders:
