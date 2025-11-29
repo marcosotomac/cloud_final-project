@@ -1,4 +1,4 @@
-org: marcosotomac
+# org: marcosotomac  # Comentado para AWS Academy (evita roles IAM custom)
 service: kfc-core
 
 provider:
@@ -7,8 +7,13 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
 
+  # Usar LabRole existente (AWS Academy no permite crear roles IAM)
   iam:
     role: arn:aws:iam::595645243021:role/LabRole
+    deploymentRole: arn:aws:iam::595645243021:role/LabRole
+
+  # Deshabilitar creación de roles personalizados
+  disableRollback: true
 
   environment:
     STAGE: ${self:provider.stage}
@@ -34,6 +39,10 @@ custom:
     noDeploy:
       - boto3
       - botocore
+
+  # Deshabilitar recursos personalizados que requieren crear roles IAM
+  enterprise:
+    collectLambdaLogs: false
 
 package:
   individually: false
