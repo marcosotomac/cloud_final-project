@@ -1,22 +1,31 @@
-# org: marcosotomac  # Comentado para AWS Academy (evita roles IAM custom)
+# ============================================================================
+# KFC ORDER MANAGEMENT SYSTEM - SERVERLESS CONFIGURATION
+# Optimizado para AWS Academy LabRole (sin crear roles IAM)
+# ============================================================================
+
 service: kfc-core
+
+# IMPORTANTE: No usar 'org' - intenta crear roles IAM custom
+# org: marcosotomac
 
 provider:
   name: aws
   runtime: python3.11
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
-
-  # Usar LabRole existente (AWS Academy no permite crear roles IAM)
+  
+  # ============================================
+  # IAM - Usar LabRole existente de AWS Academy
+  # ============================================
   iam:
     role: arn:aws:iam::595645243021:role/LabRole
-    deploymentRole: arn:aws:iam::595645243021:role/LabRole
-
-  # Deshabilitar creación de roles personalizados
-  disableRollback: true
-
+  
+  # ============================================
+  # Variables de entorno para todas las funciones
+  # ============================================
   environment:
     STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
     ORDERS_TABLE: kfc-orders-${self:provider.stage}
     CONNECTIONS_TABLE: kfc-connections-${self:provider.stage}
     TENANTS_TABLE: kfc-tenants-${self:provider.stage}
@@ -28,22 +37,26 @@ provider:
     ORDER_EVENTS_BUS: kfc-events-${self:provider.stage}
     ORDERS_QUEUE_URL: !Ref OrdersQueue
     NOTIFICATIONS_TOPIC_ARN: !Ref NotificationsTopic
-    WEBSOCKET_API_ENDPOINT: !Sub "https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
 
-  logs:
-    websocket: true
+  # ============================================
+  # Deshabilitar logs automáticos (requieren IAM)
+  # ============================================
+  # NO usar logs: websocket: true (crea roles IAM)
 
+# ============================================
+# Custom configuration
+# ============================================
 custom:
   pythonRequirements:
     dockerizePip: false
+    slim: true
     noDeploy:
       - boto3
       - botocore
 
-  # Deshabilitar recursos personalizados que requieren crear roles IAM
-  enterprise:
-    collectLambdaLogs: false
-
+# ============================================
+# Package configuration
+# ============================================
 package:
   individually: false
   patterns:
@@ -52,8 +65,12 @@ package:
     - "!.venv/**"
     - "!__pycache__/**"
     - "!*.md"
+    - "!tests/**"
     - "src/**"
 
+# ============================================
+# FUNCTIONS - Lambda Handlers
+# ============================================
 functions:
   # ==================== WEBSOCKET HANDLERS ====================
   wsConnect:
@@ -606,7 +623,7 @@ functions:
           method: get
           cors: true
 
-  # ==================== EVENT HANDLERS (SQS) ====================
+  # ==================== SQS EVENT HANDLERS ====================
   processOrderQueue:
     handler: src/handlers/queue.process_order_queue_handler
     events:
@@ -639,6 +656,9 @@ functions:
           arn: !Ref NotificationsTopic
           topicName: kfc-notifications-${self:provider.stage}
 
+# ============================================
+# RESOURCES - AWS CloudFormation Resources
+# ============================================
 resources:
   Resources:
     # ==================== DYNAMODB TABLES ====================
@@ -656,10 +676,6 @@ resources:
             AttributeType: S
           - AttributeName: GSI1SK
             AttributeType: S
-          - AttributeName: GSI2PK
-            AttributeType: S
-          - AttributeName: GSI2SK
-            AttributeType: S
         KeySchema:
           - AttributeName: PK
             KeyType: HASH
@@ -674,16 +690,6 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
-          - IndexName: GSI2
-            KeySchema:
-              - AttributeName: GSI2PK
-                KeyType: HASH
-              - AttributeName: GSI2SK
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-        StreamSpecification:
-          StreamViewType: NEW_AND_OLD_IMAGES
 
     ConnectionsTable:
       Type: AWS::DynamoDB::Table
@@ -812,6 +818,12 @@ resources:
             KeyType: RANGE
 
     # ==================== SQS QUEUES ====================
+    OrdersDeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: kfc-orders-dlq-${self:provider.stage}
+        MessageRetentionPeriod: 1209600
+
     OrdersQueue:
       Type: AWS::SQS::Queue
       Properties:
@@ -821,12 +833,6 @@ resources:
         RedrivePolicy:
           deadLetterTargetArn: !GetAtt OrdersDeadLetterQueue.Arn
           maxReceiveCount: 3
-
-    OrdersDeadLetterQueue:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: kfc-orders-dlq-${self:provider.stage}
-        MessageRetentionPeriod: 1209600
 
     # ==================== SNS TOPICS ====================
     NotificationsTopic:
@@ -845,6 +851,11 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: kfc-assets-${self:provider.stage}-595645243021
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
         CorsConfiguration:
           CorsRules:
             - AllowedHeaders:
@@ -857,51 +868,32 @@ resources:
                 - "*"
               MaxAge: 3000
 
+  # ==================== OUTPUTS ====================
   Outputs:
-    WebSocketApiId:
-      Description: "WebSocket API ID"
-      Value: !Ref WebsocketsApi
-      Export:
-        Name: kfc-${self:provider.stage}-WebSocketApiId
+    HttpApiEndpoint:
+      Description: "HTTP API Endpoint"
+      Value: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
 
     WebSocketApiEndpoint:
       Description: "WebSocket API Endpoint"
       Value: !Sub "wss://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
-      Export:
-        Name: kfc-${self:provider.stage}-WebSocketApiEndpoint
-
-    HttpApiEndpoint:
-      Description: "HTTP API Endpoint"
-      Value: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
-      Export:
-        Name: kfc-${self:provider.stage}-HttpApiEndpoint
 
     OrdersTableName:
       Description: "Orders DynamoDB Table Name"
       Value: !Ref OrdersTable
-      Export:
-        Name: kfc-${self:provider.stage}-OrdersTableName
 
     OrdersQueueUrl:
       Description: "Orders SQS Queue URL"
       Value: !Ref OrdersQueue
-      Export:
-        Name: kfc-${self:provider.stage}-OrdersQueueUrl
 
     NotificationsTopicArn:
       Description: "Notifications SNS Topic ARN"
       Value: !Ref NotificationsTopic
-      Export:
-        Name: kfc-${self:provider.stage}-NotificationsTopicArn
 
     EventBusName:
       Description: "EventBridge Bus Name"
       Value: !Ref OrderEventBus
-      Export:
-        Name: kfc-${self:provider.stage}-EventBusName
 
     AssetsBucketName:
       Description: "Assets S3 Bucket Name"
       Value: !Ref AssetsBucket
-      Export:
-        Name: kfc-${self:provider.stage}-AssetsBucketName
