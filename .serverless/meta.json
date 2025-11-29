@@ -1,0 +1,14 @@
+{
+  "unknown": {
+    "versionFramework": "4.25.0",
+    "command": [
+      "mcp"
+    ],
+    "options": {},
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}

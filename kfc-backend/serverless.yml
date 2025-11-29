@@ -1,0 +1,1373 @@
+org: marcosotomac
+service: kfc-order-management
+
+provider:
+  name: aws
+  runtime: python3.11
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+
+  iam:
+    role: arn:aws:iam::595645243021:role/LabRole
+
+  environment:
+    STAGE: ${self:provider.stage}
+    ORDERS_TABLE: ${self:service}-orders-${self:provider.stage}
+    CONNECTIONS_TABLE: ${self:service}-connections-${self:provider.stage}
+    TENANTS_TABLE: ${self:service}-tenants-${self:provider.stage}
+    MENU_TABLE: ${self:service}-menu-${self:provider.stage}
+    USERS_TABLE: ${self:service}-users-${self:provider.stage}
+    INVENTORY_TABLE: ${self:service}-inventory-${self:provider.stage}
+    PROMOTIONS_TABLE: ${self:service}-promotions-${self:provider.stage}
+    CUSTOMERS_TABLE: ${self:service}-customers-${self:provider.stage}
+    ORDER_EVENTS_BUS: ${self:service}-events-${self:provider.stage}
+    ORDERS_QUEUE_URL: !Ref OrdersQueue
+    NOTIFICATIONS_TOPIC_ARN: !Ref NotificationsTopic
+    WEBSOCKET_API_ENDPOINT: !Sub "https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
+    STATE_MACHINE_ARN: !Ref OrderWorkflowStateMachine
+
+  logs:
+    websocket: true
+
+# Plugins
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: false
+    noDeploy:
+      - boto3
+      - botocore
+
+package:
+  individually: false
+  patterns:
+    - "!node_modules/**"
+    - "!.git/**"
+    - "!.venv/**"
+    - "!__pycache__/**"
+    - "!*.md"
+    - "src/**"
+
+functions:
+  # ==================== WEBSOCKET HANDLERS ====================
+  wsConnect:
+    handler: src/handlers/websocket.connect_handler
+    events:
+      - websocket:
+          route: $connect
+
+  wsDisconnect:
+    handler: src/handlers/websocket.disconnect_handler
+    events:
+      - websocket:
+          route: $disconnect
+
+  wsDefault:
+    handler: src/handlers/websocket.default_handler
+    events:
+      - websocket:
+          route: $default
+
+  wsSubscribe:
+    handler: src/handlers/websocket.subscribe_handler
+    events:
+      - websocket:
+          route: subscribe
+
+  wsBroadcast:
+    handler: src/handlers/websocket.broadcast_handler
+    events:
+      - websocket:
+          route: broadcast
+
+  # ==================== AUTH HANDLERS ====================
+  register:
+    handler: src/handlers/auth.register_handler
+    events:
+      - http:
+          path: /auth/register
+          method: post
+          cors: true
+
+  login:
+    handler: src/handlers/auth.login_handler
+    events:
+      - http:
+          path: /auth/login
+          method: post
+          cors: true
+
+  # ==================== TENANT HANDLERS ====================
+  createTenant:
+    handler: src/handlers/tenants.create_tenant_handler
+    events:
+      - http:
+          path: /tenants
+          method: post
+          cors: true
+
+  getTenants:
+    handler: src/handlers/tenants.get_tenants_handler
+    events:
+      - http:
+          path: /tenants
+          method: get
+          cors: true
+
+  getTenant:
+    handler: src/handlers/tenants.get_tenant_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}
+          method: get
+          cors: true
+
+  # ==================== MENU HANDLERS ====================
+  createMenuItem:
+    handler: src/handlers/menu.create_menu_item_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/menu
+          method: post
+          cors: true
+
+  getMenu:
+    handler: src/handlers/menu.get_menu_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/menu
+          method: get
+          cors: true
+
+  updateMenuItem:
+    handler: src/handlers/menu.update_menu_item_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/menu/{itemId}
+          method: put
+          cors: true
+
+  deleteMenuItem:
+    handler: src/handlers/menu.delete_menu_item_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/menu/{itemId}
+          method: delete
+          cors: true
+
+  # ==================== ORDER HANDLERS ====================
+  createOrder:
+    handler: src/handlers/orders.create_order_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders
+          method: post
+          cors: true
+
+  getOrders:
+    handler: src/handlers/orders.get_orders_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders
+          method: get
+          cors: true
+
+  getOrder:
+    handler: src/handlers/orders.get_order_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}
+          method: get
+          cors: true
+
+  getOrdersByStatus:
+    handler: src/handlers/orders.get_orders_by_status_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/status/{status}
+          method: get
+          cors: true
+
+  getCustomerOrders:
+    handler: src/handlers/orders.get_customer_orders_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/orders
+          method: get
+          cors: true
+
+  # ==================== WORKFLOW HANDLERS ====================
+  startWorkflow:
+    handler: src/handlers/workflow.start_workflow_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/workflow/start
+          method: post
+          cors: true
+
+  takeOrder:
+    handler: src/handlers/workflow.take_order_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/workflow/take
+          method: post
+          cors: true
+
+  startCooking:
+    handler: src/handlers/workflow.start_cooking_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/workflow/cook
+          method: post
+          cors: true
+
+  finishCooking:
+    handler: src/handlers/workflow.finish_cooking_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/workflow/cooked
+          method: post
+          cors: true
+
+  packOrder:
+    handler: src/handlers/workflow.pack_order_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/workflow/pack
+          method: post
+          cors: true
+
+  startDelivery:
+    handler: src/handlers/workflow.start_delivery_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/workflow/deliver
+          method: post
+          cors: true
+
+  completeDelivery:
+    handler: src/handlers/workflow.complete_delivery_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/workflow/complete
+          method: post
+          cors: true
+
+  # ==================== DASHBOARD HANDLERS ====================
+  getDashboard:
+    handler: src/handlers/dashboard.get_dashboard_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/dashboard
+          method: get
+          cors: true
+
+  getWorkflowStats:
+    handler: src/handlers/dashboard.get_workflow_stats_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/dashboard/workflow-stats
+          method: get
+          cors: true
+
+  # ==================== STAFF HANDLERS ====================
+  getStaff:
+    handler: src/handlers/staff.get_staff_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/staff
+          method: get
+          cors: true
+
+  createStaff:
+    handler: src/handlers/staff.create_staff_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/staff
+          method: post
+          cors: true
+
+  updateStaff:
+    handler: src/handlers/staff.update_staff_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/staff/{staffId}
+          method: put
+          cors: true
+
+  # ==================== STAFF MEMBER DETAIL ====================
+  getStaffMember:
+    handler: src/handlers/staff.get_staff_member_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/staff/{staffId}
+          method: get
+          cors: true
+
+  # ==================== ORDER MANAGEMENT (CANCEL/UPDATE) ====================
+  cancelOrder:
+    handler: src/handlers/orders.cancel_order_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/cancel
+          method: post
+          cors: true
+
+  updateOrder:
+    handler: src/handlers/orders.update_order_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}
+          method: put
+          cors: true
+
+  # ==================== INVENTORY HANDLERS ====================
+  getInventory:
+    handler: src/handlers/inventory.get_inventory_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/inventory
+          method: get
+          cors: true
+
+  getInventoryItem:
+    handler: src/handlers/inventory.get_inventory_item_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/inventory/{itemId}
+          method: get
+          cors: true
+
+  createInventoryItem:
+    handler: src/handlers/inventory.create_inventory_item_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/inventory
+          method: post
+          cors: true
+
+  updateInventoryItem:
+    handler: src/handlers/inventory.update_inventory_item_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/inventory/{itemId}
+          method: put
+          cors: true
+
+  adjustInventory:
+    handler: src/handlers/inventory.adjust_inventory_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/inventory/{itemId}/adjust
+          method: post
+          cors: true
+
+  getLowStockAlerts:
+    handler: src/handlers/inventory.get_low_stock_alerts_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/inventory/alerts/low-stock
+          method: get
+          cors: true
+
+  deleteInventoryItem:
+    handler: src/handlers/inventory.delete_inventory_item_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/inventory/{itemId}
+          method: delete
+          cors: true
+
+  # ==================== PROMOTIONS HANDLERS ====================
+  getPromotions:
+    handler: src/handlers/promotions.get_promotions_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/promotions
+          method: get
+          cors: true
+
+  getPromotion:
+    handler: src/handlers/promotions.get_promotion_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/promotions/{promotionId}
+          method: get
+          cors: true
+
+  createPromotion:
+    handler: src/handlers/promotions.create_promotion_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/promotions
+          method: post
+          cors: true
+
+  updatePromotion:
+    handler: src/handlers/promotions.update_promotion_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/promotions/{promotionId}
+          method: put
+          cors: true
+
+  deletePromotion:
+    handler: src/handlers/promotions.delete_promotion_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/promotions/{promotionId}
+          method: delete
+          cors: true
+
+  validatePromoCode:
+    handler: src/handlers/promotions.validate_promo_code_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/promotions/validate
+          method: post
+          cors: true
+
+  applyPromotion:
+    handler: src/handlers/promotions.apply_promotion_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/promotions/apply
+          method: post
+          cors: true
+
+  getActivePromotions:
+    handler: src/handlers/promotions.get_active_promotions_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/promotions/active
+          method: get
+          cors: true
+
+  # ==================== CUSTOMERS HANDLERS ====================
+  getCustomerProfile:
+    handler: src/handlers/customers.get_customer_profile_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/profile
+          method: get
+          cors: true
+
+  updateCustomerProfile:
+    handler: src/handlers/customers.update_customer_profile_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/profile
+          method: put
+          cors: true
+
+  getCustomerFavorites:
+    handler: src/handlers/customers.get_favorites_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/favorites
+          method: get
+          cors: true
+
+  addCustomerFavorite:
+    handler: src/handlers/customers.add_favorite_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/favorites
+          method: post
+          cors: true
+
+  removeCustomerFavorite:
+    handler: src/handlers/customers.remove_favorite_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/favorites/{itemId}
+          method: delete
+          cors: true
+
+  getCustomerAddresses:
+    handler: src/handlers/customers.get_addresses_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/addresses
+          method: get
+          cors: true
+
+  addCustomerAddress:
+    handler: src/handlers/customers.add_address_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/addresses
+          method: post
+          cors: true
+
+  updateCustomerAddress:
+    handler: src/handlers/customers.update_address_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/addresses/{addressId}
+          method: put
+          cors: true
+
+  deleteCustomerAddress:
+    handler: src/handlers/customers.delete_address_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/addresses/{addressId}
+          method: delete
+          cors: true
+
+  getOrderHistory:
+    handler: src/handlers/customers.get_order_history_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/order-history
+          method: get
+          cors: true
+
+  trackOrder:
+    handler: src/handlers/customers.track_order_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/track
+          method: get
+          cors: true
+
+  reorder:
+    handler: src/handlers/customers.reorder_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/reorder
+          method: post
+          cors: true
+
+  # ==================== REPORTS HANDLERS ====================
+  getSalesReport:
+    handler: src/handlers/reports.get_sales_report_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/reports/sales
+          method: get
+          cors: true
+
+  getOrdersReport:
+    handler: src/handlers/reports.get_orders_report_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/reports/orders
+          method: get
+          cors: true
+
+  getProductPerformance:
+    handler: src/handlers/reports.get_product_performance_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/reports/products
+          method: get
+          cors: true
+
+  getStaffPerformance:
+    handler: src/handlers/reports.get_staff_performance_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/reports/staff-performance
+          method: get
+          cors: true
+
+  getHourlyReport:
+    handler: src/handlers/reports.get_hourly_report_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/reports/hourly
+          method: get
+          cors: true
+
+  getDailyReport:
+    handler: src/handlers/reports.get_daily_report_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/reports/daily
+          method: get
+          cors: true
+
+  getCustomerInsights:
+    handler: src/handlers/reports.get_customer_insights_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/reports/customers
+          method: get
+          cors: true
+
+  exportReport:
+    handler: src/handlers/reports.export_report_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/reports/export
+          method: post
+          cors: true
+
+  # ==================== RATINGS & REVIEWS HANDLERS ====================
+  createOrderRating:
+    handler: src/handlers/ratings.create_order_rating_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/rating
+          method: post
+          cors: true
+
+  getOrderRating:
+    handler: src/handlers/ratings.get_order_rating_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/rating
+          method: get
+          cors: true
+
+  getTenantRatings:
+    handler: src/handlers/ratings.get_tenant_ratings_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/ratings
+          method: get
+          cors: true
+
+  createMenuItemReview:
+    handler: src/handlers/ratings.create_menu_item_review_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/menu/{itemId}/reviews
+          method: post
+          cors: true
+
+  getMenuItemReviews:
+    handler: src/handlers/ratings.get_menu_item_reviews_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/menu/{itemId}/reviews
+          method: get
+          cors: true
+
+  updateReviewHelpful:
+    handler: src/handlers/ratings.update_review_helpful_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/menu/{itemId}/reviews/{reviewId}/helpful
+          method: post
+          cors: true
+
+  deleteReview:
+    handler: src/handlers/ratings.delete_review_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/menu/{itemId}/reviews/{reviewId}
+          method: delete
+          cors: true
+
+  getCustomerReviews:
+    handler: src/handlers/ratings.get_customer_reviews_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/reviews
+          method: get
+          cors: true
+
+  # ==================== LOCATIONS HANDLERS ====================
+  createLocation:
+    handler: src/handlers/locations.create_location_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/locations
+          method: post
+          cors: true
+
+  getLocations:
+    handler: src/handlers/locations.get_locations_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/locations
+          method: get
+          cors: true
+
+  getLocation:
+    handler: src/handlers/locations.get_location_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/locations/{locationId}
+          method: get
+          cors: true
+
+  updateLocation:
+    handler: src/handlers/locations.update_location_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/locations/{locationId}
+          method: put
+          cors: true
+
+  deleteLocation:
+    handler: src/handlers/locations.delete_location_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/locations/{locationId}
+          method: delete
+          cors: true
+
+  findNearbyLocations:
+    handler: src/handlers/locations.find_nearby_locations_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/locations/nearby
+          method: get
+          cors: true
+
+  checkDeliveryAvailability:
+    handler: src/handlers/locations.check_delivery_availability_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/locations/check-delivery
+          method: post
+          cors: true
+
+  toggleLocationStatus:
+    handler: src/handlers/locations.toggle_location_status_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/locations/{locationId}/toggle
+          method: post
+          cors: true
+
+  getLocationSchedule:
+    handler: src/handlers/locations.get_location_schedule_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/locations/{locationId}/schedule
+          method: get
+          cors: true
+
+  # ==================== PAYMENTS HANDLERS ====================
+  processPayment:
+    handler: src/handlers/payments.process_payment_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/payment
+          method: post
+          cors: true
+
+  verifyPayment:
+    handler: src/handlers/payments.verify_payment_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/payments/{paymentId}/verify
+          method: post
+          cors: true
+
+  getOrderPayments:
+    handler: src/handlers/payments.get_order_payments_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/payments
+          method: get
+          cors: true
+
+  processRefund:
+    handler: src/handlers/payments.process_refund_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/orders/{orderId}/refund
+          method: post
+          cors: true
+
+  getPaymentMethods:
+    handler: src/handlers/payments.get_payment_methods_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/payment-methods
+          method: get
+          cors: true
+
+  addSavedCard:
+    handler: src/handlers/payments.add_saved_card_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/cards
+          method: post
+          cors: true
+
+  getSavedCards:
+    handler: src/handlers/payments.get_saved_cards_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/cards
+          method: get
+          cors: true
+
+  deleteSavedCard:
+    handler: src/handlers/payments.delete_saved_card_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/customers/{customerId}/cards/{cardId}
+          method: delete
+          cors: true
+
+  getDailyRevenue:
+    handler: src/handlers/payments.get_daily_revenue_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/payments/daily-revenue
+          method: get
+          cors: true
+
+  # ==================== EVENT HANDLERS (SQS) ====================
+  processOrderQueue:
+    handler: src/handlers/queue.process_order_queue_handler
+    events:
+      - sqs:
+          arn: !GetAtt OrdersQueue.Arn
+          batchSize: 1
+
+  processDLQ:
+    handler: src/handlers/queue.process_dlq_handler
+    events:
+      - sqs:
+          arn: !GetAtt OrdersDeadLetterQueue.Arn
+          batchSize: 1
+
+  # ==================== EVENTBRIDGE HANDLERS ====================
+  orderEventHandler:
+    handler: src/handlers/events.order_events_handler
+    events:
+      - eventBridge:
+          eventBus: !Ref OrderEventBus
+          pattern:
+            source:
+              - kfc.orders
+
+  tenantEventHandler:
+    handler: src/handlers/events.tenant_events_handler
+    events:
+      - eventBridge:
+          eventBus: !Ref OrderEventBus
+          pattern:
+            source:
+              - kfc.tenants
+
+  # ==================== STEP FUNCTIONS TASK HANDLERS ====================
+  sfnReceiveOrder:
+    handler: src/handlers/stepfunctions.sfn_receive_order_handler
+
+  sfnCookOrder:
+    handler: src/handlers/stepfunctions.sfn_cook_order_handler
+
+  sfnPackOrder:
+    handler: src/handlers/stepfunctions.sfn_pack_order_handler
+
+  sfnDeliverOrder:
+    handler: src/handlers/stepfunctions.sfn_deliver_order_handler
+
+  sfnCompleteOrder:
+    handler: src/handlers/stepfunctions.sfn_complete_order_handler
+
+  sfnNotifyStatus:
+    handler: src/handlers/stepfunctions.sfn_notify_status_handler
+
+  sfnWaitForTask:
+    handler: src/handlers/stepfunctions.sfn_wait_for_task_handler
+
+  # ==================== SNS NOTIFICATION HANDLER ====================
+  notificationHandler:
+    handler: src/handlers/notifications.notification_handler
+    events:
+      - sns:
+          arn: !Ref NotificationsTopic
+          topicName: ${self:service}-notifications-${self:provider.stage}
+
+  orderNotificationHandler:
+    handler: src/handlers/notifications.order_notification_handler
+
+resources:
+  Resources:
+    # ==================== DYNAMODB TABLES ====================
+    OrdersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.ORDERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+          - AttributeName: GSI2PK
+            AttributeType: S
+          - AttributeName: GSI2SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: GSI2
+            KeySchema:
+              - AttributeName: GSI2PK
+                KeyType: HASH
+              - AttributeName: GSI2SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+
+    ConnectionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.CONNECTIONS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: connectionId
+            AttributeType: S
+          - AttributeName: tenantId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: TenantIndex
+            KeySchema:
+              - AttributeName: tenantId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    TenantsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TENANTS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: tenantId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenantId
+            KeyType: HASH
+
+    MenuTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.MENU_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.USERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    # ==================== INVENTORY TABLE ====================
+    InventoryTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.INVENTORY_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+
+    # ==================== PROMOTIONS TABLE ====================
+    PromotionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.PROMOTIONS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    # ==================== CUSTOMERS TABLE ====================
+    CustomersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.CUSTOMERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    # ==================== SQS QUEUES ====================
+    OrdersQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-orders-queue-${self:provider.stage}
+        VisibilityTimeout: 60
+        MessageRetentionPeriod: 86400
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt OrdersDeadLetterQueue.Arn
+          maxReceiveCount: 3
+
+    OrdersDeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-orders-dlq-${self:provider.stage}
+        MessageRetentionPeriod: 1209600
+
+    # ==================== SNS TOPICS ====================
+    NotificationsTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:service}-notifications-${self:provider.stage}
+
+    # ==================== EVENTBRIDGE ====================
+    OrderEventBus:
+      Type: AWS::Events::EventBus
+      Properties:
+        Name: ${self:provider.environment.ORDER_EVENTS_BUS}
+
+    # ==================== S3 BUCKET ====================
+    AssetsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:service}-assets-${self:provider.stage}-${AWS::AccountId}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - "*"
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+              AllowedOrigins:
+                - "*"
+              MaxAge: 3000
+
+    # ==================== STEP FUNCTIONS ====================
+    OrderWorkflowStateMachine:
+      Type: AWS::StepFunctions::StateMachine
+      Properties:
+        StateMachineName: ${self:service}-order-workflow-${self:provider.stage}
+        RoleArn: arn:aws:iam::595645243021:role/LabRole
+        Definition:
+          Comment: "KFC Order Processing Workflow"
+          StartAt: ReceiveOrder
+          States:
+            ReceiveOrder:
+              Type: Task
+              Resource: !GetAtt SfnReceiveOrderLambdaFunction.Arn
+              ResultPath: "$.receiveResult"
+              Next: NotifyOrderReceived
+              Catch:
+                - ErrorEquals: ["States.ALL"]
+                  Next: HandleError
+
+            NotifyOrderReceived:
+              Type: Task
+              Resource: !GetAtt SfnNotifyStatusLambdaFunction.Arn
+              Parameters:
+                orderId.$: "$.orderId"
+                tenantId.$: "$.tenantId"
+                status: "RECEIVED"
+                message: "Pedido recibido"
+              ResultPath: "$.notifyReceivedResult"
+              Next: WaitForCookingStart
+
+            WaitForCookingStart:
+              Type: Task
+              Resource: "arn:aws:states:::sqs:sendMessage.waitForTaskToken"
+              Parameters:
+                QueueUrl: !Ref OrdersQueue
+                MessageBody:
+                  orderId.$: "$.orderId"
+                  tenantId.$: "$.tenantId"
+                  action: "START_COOKING"
+                  taskToken.$: "$$.Task.Token"
+              ResultPath: "$.cookStarted"
+              TimeoutSeconds: 7200
+              Next: CookOrder
+              Catch:
+                - ErrorEquals: ["States.ALL"]
+                  Next: HandleError
+
+            CookOrder:
+              Type: Task
+              Resource: !GetAtt SfnCookOrderLambdaFunction.Arn
+              ResultPath: "$.cookResult"
+              Next: NotifyOrderCooking
+              Catch:
+                - ErrorEquals: ["States.ALL"]
+                  Next: HandleError
+
+            NotifyOrderCooking:
+              Type: Task
+              Resource: !GetAtt SfnNotifyStatusLambdaFunction.Arn
+              Parameters:
+                orderId.$: "$.orderId"
+                tenantId.$: "$.tenantId"
+                status: "COOKING"
+                message: "Pedido en preparación"
+              ResultPath: "$.notifyCookingResult"
+              Next: WaitForCookingComplete
+
+            WaitForCookingComplete:
+              Type: Task
+              Resource: "arn:aws:states:::sqs:sendMessage.waitForTaskToken"
+              Parameters:
+                QueueUrl: !Ref OrdersQueue
+                MessageBody:
+                  orderId.$: "$.orderId"
+                  tenantId.$: "$.tenantId"
+                  action: "COOKING_COMPLETE"
+                  taskToken.$: "$$.Task.Token"
+              ResultPath: "$.cookingComplete"
+              TimeoutSeconds: 7200
+              Next: PackOrder
+              Catch:
+                - ErrorEquals: ["States.ALL"]
+                  Next: HandleError
+
+            PackOrder:
+              Type: Task
+              Resource: !GetAtt SfnPackOrderLambdaFunction.Arn
+              ResultPath: "$.packResult"
+              Next: NotifyOrderPacked
+              Catch:
+                - ErrorEquals: ["States.ALL"]
+                  Next: HandleError
+
+            NotifyOrderPacked:
+              Type: Task
+              Resource: !GetAtt SfnNotifyStatusLambdaFunction.Arn
+              Parameters:
+                orderId.$: "$.orderId"
+                tenantId.$: "$.tenantId"
+                status: "PACKED"
+                message: "Pedido empacado"
+              ResultPath: "$.notifyPackedResult"
+              Next: WaitForDeliveryStart
+
+            WaitForDeliveryStart:
+              Type: Task
+              Resource: "arn:aws:states:::sqs:sendMessage.waitForTaskToken"
+              Parameters:
+                QueueUrl: !Ref OrdersQueue
+                MessageBody:
+                  orderId.$: "$.orderId"
+                  tenantId.$: "$.tenantId"
+                  action: "START_DELIVERY"
+                  taskToken.$: "$$.Task.Token"
+              ResultPath: "$.deliveryStarted"
+              TimeoutSeconds: 7200
+              Next: DeliverOrder
+              Catch:
+                - ErrorEquals: ["States.ALL"]
+                  Next: HandleError
+
+            DeliverOrder:
+              Type: Task
+              Resource: !GetAtt SfnDeliverOrderLambdaFunction.Arn
+              ResultPath: "$.deliverResult"
+              Next: NotifyOrderDelivering
+              Catch:
+                - ErrorEquals: ["States.ALL"]
+                  Next: HandleError
+
+            NotifyOrderDelivering:
+              Type: Task
+              Resource: !GetAtt SfnNotifyStatusLambdaFunction.Arn
+              Parameters:
+                orderId.$: "$.orderId"
+                tenantId.$: "$.tenantId"
+                status: "DELIVERING"
+                message: "Pedido en camino"
+              ResultPath: "$.notifyDeliveringResult"
+              Next: WaitForDeliveryComplete
+
+            WaitForDeliveryComplete:
+              Type: Task
+              Resource: "arn:aws:states:::sqs:sendMessage.waitForTaskToken"
+              Parameters:
+                QueueUrl: !Ref OrdersQueue
+                MessageBody:
+                  orderId.$: "$.orderId"
+                  tenantId.$: "$.tenantId"
+                  action: "DELIVERY_COMPLETE"
+                  taskToken.$: "$$.Task.Token"
+              ResultPath: "$.deliveryComplete"
+              TimeoutSeconds: 7200
+              Next: CompleteOrder
+              Catch:
+                - ErrorEquals: ["States.ALL"]
+                  Next: HandleError
+
+            CompleteOrder:
+              Type: Task
+              Resource: !GetAtt SfnCompleteOrderLambdaFunction.Arn
+              ResultPath: "$.completeResult"
+              Next: NotifyOrderCompleted
+              Catch:
+                - ErrorEquals: ["States.ALL"]
+                  Next: HandleError
+
+            NotifyOrderCompleted:
+              Type: Task
+              Resource: !GetAtt SfnNotifyStatusLambdaFunction.Arn
+              Parameters:
+                orderId.$: "$.orderId"
+                tenantId.$: "$.tenantId"
+                status: "COMPLETED"
+                message: "Pedido entregado"
+              ResultPath: "$.notifyCompletedResult"
+              End: true
+
+            HandleError:
+              Type: Task
+              Resource: !GetAtt SfnNotifyStatusLambdaFunction.Arn
+              Parameters:
+                orderId.$: "$.orderId"
+                tenantId.$: "$.tenantId"
+                status: "ERROR"
+                message: "Error en el procesamiento del pedido"
+              End: true
+
+  Outputs:
+    WebSocketApiId:
+      Description: "WebSocket API ID"
+      Value: !Ref WebsocketsApi
+      Export:
+        Name: ${self:service}-${self:provider.stage}-WebSocketApiId
+
+    WebSocketApiEndpoint:
+      Description: "WebSocket API Endpoint"
+      Value: !Sub "wss://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
+      Export:
+        Name: ${self:service}-${self:provider.stage}-WebSocketApiEndpoint
+
+    HttpApiEndpoint:
+      Description: "HTTP API Endpoint"
+      Value: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
+      Export:
+        Name: ${self:service}-${self:provider.stage}-HttpApiEndpoint
+
+    OrdersTableName:
+      Description: "Orders DynamoDB Table Name"
+      Value: !Ref OrdersTable
+      Export:
+        Name: ${self:service}-${self:provider.stage}-OrdersTableName
+
+    StateMachineArn:
+      Description: "Order Workflow State Machine ARN"
+      Value: !Ref OrderWorkflowStateMachine
+      Export:
+        Name: ${self:service}-${self:provider.stage}-StateMachineArn
+
+    AssetsBucketName:
+      Description: "Assets S3 Bucket Name"
+      Value: !Ref AssetsBucket
+      Export:
+        Name: ${self:service}-${self:provider.stage}-AssetsBucketName

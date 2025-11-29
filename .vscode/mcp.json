@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "serverless": {
+      "command": "serverless",
+      "args": ["mcp"]
+    }
+  }
+}
