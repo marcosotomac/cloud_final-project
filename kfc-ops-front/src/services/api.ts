@@ -62,11 +62,13 @@ export interface MenuItem {
   description: string;
   price: number;
   category: string;
-  imageUrl?: string;
-  available: boolean;
+  image?: string;
+  isAvailable: boolean;
   ingredients?: string[];
   preparationTime?: number;
   nutritionalInfo?: Record<string, number>;
+  isFeatured?: boolean;
+  tags?: string[];
 }
 
 export interface InventoryItem {
@@ -186,15 +188,34 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle error response - could be in body or direct
+        const errorData = data.body ? JSON.parse(data.body) : data;
         return {
           success: false,
-          error: data.message || data.error || `Error: ${response.status}`,
+          error:
+            errorData.message || errorData.error || `Error: ${response.status}`,
         };
       }
 
+      // Handle success response - parse body if it's a string (Lambda proxy integration)
+      let responseData = data;
+      if (data.body && typeof data.body === "string") {
+        try {
+          responseData = JSON.parse(data.body);
+        } catch {
+          responseData = data;
+        }
+      } else if (data.body) {
+        responseData = data.body;
+      }
+
+      // Extract actual data from nested response structure
+      const actualData =
+        responseData.data !== undefined ? responseData.data : responseData;
+
       return {
         success: true,
-        data: data.body ? JSON.parse(data.body) : data,
+        data: actualData,
       };
     } catch (error) {
       return {

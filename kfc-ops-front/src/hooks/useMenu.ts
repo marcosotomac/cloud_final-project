@@ -1,13 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import menuService from "@/services/menu.service";
 
-export const useMenu = (filters?: { category?: string }) => {
+export const useMenu = (filters?: {
+  category?: string;
+  availableOnly?: boolean;
+}) => {
   return useQuery({
     queryKey: ["menu", filters],
     queryFn: async () => {
       const response = await menuService.getMenu(filters);
       if (response.success) {
-        return response.data || [];
+        // Backend returns { items: [...], categories: {...}, totalItems: N }
+        const data = response.data as any;
+        return data?.items || data || [];
       }
       throw new Error(response.error);
     },
@@ -52,8 +57,8 @@ export const useCreateMenuItem = () => {
       description: string;
       price: number;
       category: string;
-      imageUrl?: string;
-      available?: boolean;
+      image?: string;
+      isAvailable?: boolean;
       ingredients?: string[];
       preparationTime?: number;
     }) => {
@@ -83,8 +88,8 @@ export const useUpdateMenuItem = () => {
         description: string;
         price: number;
         category: string;
-        imageUrl?: string;
-        available?: boolean;
+        image?: string;
+        isAvailable?: boolean;
         ingredients?: string[];
         preparationTime?: number;
       }>;

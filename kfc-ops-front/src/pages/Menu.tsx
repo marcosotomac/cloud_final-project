@@ -52,8 +52,8 @@ const Menu = () => {
       description: item.description || "",
       price: item.price || 0,
       category: item.category || "Sin categoría",
-      available: item.available !== false,
-      image: item.imageUrl || item.image,
+      available: item.isAvailable !== false,
+      image: item.image || item.imageUrl || "",
     }));
   }, [menuItems]);
 
@@ -90,8 +90,8 @@ const Menu = () => {
             description: productData.description,
             price: productData.price,
             category: productData.category,
-            imageUrl: productData.image,
-            available: productData.available,
+            image: productData.image,
+            isAvailable: productData.available,
           },
         });
         toast.success("Producto actualizado correctamente");
@@ -101,8 +101,8 @@ const Menu = () => {
           description: productData.description,
           price: productData.price,
           category: productData.category,
-          imageUrl: productData.image,
-          available: productData.available,
+          image: productData.image,
+          isAvailable: productData.available,
         });
         toast.success("Producto creado correctamente");
       }

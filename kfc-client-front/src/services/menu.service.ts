@@ -1,6 +1,18 @@
 import apiClient, { ApiResponse, MenuItem, Rating, ReviewSummary } from "./api";
 import { API_CONFIG, ENDPOINTS } from "@/config/api";
 
+// Map URL slugs to actual category names in the database
+const categoryMap: Record<string, string> = {
+  pollo: "Pollo Frito",
+  combos: "Combos",
+  sandwiches: "Sandwiches",
+  hamburguesas: "Hamburguesas",
+  ensaladas: "Ensaladas",
+  complementos: "Complementos",
+  bebidas: "Bebidas",
+  postres: "Postres",
+};
+
 class MenuService {
   private tenantId = API_CONFIG.TENANT_ID;
 
@@ -12,15 +24,18 @@ class MenuService {
     return apiClient.get<MenuItem>(ENDPOINTS.MENU_ITEM(this.tenantId, itemId));
   }
 
-  async getMenuByCategory(category: string): Promise<ApiResponse<MenuItem[]>> {
-    const response = await this.getMenu();
-    if (response.success && response.data) {
-      return {
-        ...response,
-        data: response.data.filter((item) => item.category === category),
-      };
-    }
-    return response;
+  async getMenuByCategory(
+    categorySlug: string
+  ): Promise<ApiResponse<MenuItem[]>> {
+    // Map the URL slug to the actual category name
+    const categoryName =
+      categoryMap[categorySlug.toLowerCase()] || categorySlug;
+
+    // Use the category query parameter
+    const url = `${ENDPOINTS.MENU(this.tenantId)}?category=${encodeURIComponent(
+      categoryName
+    )}`;
+    return apiClient.get<MenuItem[]>(url);
   }
 
   async getItemReviews(itemId: string): Promise<ApiResponse<ReviewSummary>> {

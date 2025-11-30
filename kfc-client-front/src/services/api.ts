@@ -35,8 +35,7 @@ export interface MenuItem {
   price: number;
   category: string;
   image?: string;
-  imageUrl?: string;
-  available: boolean;
+  isAvailable: boolean;
   preparationTime?: number;
   ingredients?: string[];
   nutritionalInfo?: {
@@ -58,6 +57,8 @@ export interface MenuItem {
   }>;
   allergens?: string[];
   rating?: number;
+  isFeatured?: boolean;
+  tags?: string[];
 }
 
 export interface OrderItem {
@@ -172,6 +173,7 @@ class ApiClient {
   private getHeaders(): HeadersInit {
     const headers: HeadersInit = {
       "Content-Type": "application/json",
+      "X-Tenant-Id": API_CONFIG.TENANT_ID,
     };
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
@@ -195,16 +197,34 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle error response - could be in body or direct (Lambda proxy integration)
+        const errorData = data.body ? JSON.parse(data.body) : data;
         return {
           success: false,
-          error: data.message || data.error || "An error occurred",
+          error: errorData.message || errorData.error || "An error occurred",
         };
       }
 
+      // Handle success response - parse body if it's a string (Lambda proxy integration)
+      let responseData = data;
+      if (data.body && typeof data.body === "string") {
+        try {
+          responseData = JSON.parse(data.body);
+        } catch {
+          responseData = data;
+        }
+      } else if (data.body) {
+        responseData = data.body;
+      }
+
+      // Extract actual data from nested response structure
+      const actualData =
+        responseData.data !== undefined ? responseData.data : responseData;
+
       return {
         success: true,
-        data: data.data || data,
-        message: data.message,
+        data: actualData,
+        message: responseData.message,
       };
     } catch (error) {
       console.error("API Error:", error);

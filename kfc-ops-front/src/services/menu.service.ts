@@ -6,8 +6,8 @@ interface MenuItemCreateData {
   description: string;
   price: number;
   category: string;
-  imageUrl?: string;
-  available?: boolean;
+  image?: string;
+  isAvailable?: boolean;
   ingredients?: string[];
   preparationTime?: number;
   nutritionalInfo?: Record<string, number>;
@@ -17,12 +17,24 @@ class MenuService {
   // Get all menu items
   async getMenu(filters?: {
     category?: string;
+    availableOnly?: boolean;
   }): Promise<ApiResponse<MenuItem[]>> {
-    let endpoint = ENDPOINTS.MENU;
+    const params = new URLSearchParams();
 
     if (filters?.category) {
-      endpoint += `?category=${encodeURIComponent(filters.category)}`;
+      params.append("category", filters.category);
     }
+
+    // For ops panel, show all items by default (including unavailable)
+    params.append(
+      "availableOnly",
+      filters?.availableOnly?.toString() ?? "false"
+    );
+
+    const queryString = params.toString();
+    const endpoint = queryString
+      ? `${ENDPOINTS.MENU}?${queryString}`
+      : ENDPOINTS.MENU;
 
     return apiClient.get<MenuItem[]>(endpoint);
   }
@@ -66,10 +78,14 @@ class MenuService {
   async getCategories(): Promise<ApiResponse<string[]>> {
     const response = await this.getMenu();
     if (response.success && response.data) {
-      const categories = [
-        ...new Set(response.data.map((item) => item.category)),
-      ];
-      return { success: true, data: categories };
+      // response.data could be {items: [...]} or directly an array
+      const items = (response.data as any)?.items || response.data;
+      if (Array.isArray(items)) {
+        const categories = [
+          ...new Set(items.map((item: MenuItem) => item.category)),
+        ];
+        return { success: true, data: categories };
+      }
     }
     return { success: false, error: response.error };
   }

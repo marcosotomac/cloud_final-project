@@ -72,7 +72,7 @@ const ProductDetail = () => {
       name: product.name,
       price: product.price,
       quantity,
-      image: product.imageUrl,
+      image: product.image,
       recipe: hasRecipeSelection
         ? `${recipeOriginal} Original, ${recipeCrispy} Crispy, ${recipePicante} Picante`
         : undefined,
@@ -143,7 +143,7 @@ const ProductDetail = () => {
           <Card className="p-6">
             <div className="relative mb-6">
               <img
-                src={product.imageUrl || "/placeholder-product.jpg"}
+                src={product.image || "/placeholder-product.jpg"}
                 alt={product.name}
                 className="w-full aspect-square object-contain"
               />
@@ -214,7 +214,9 @@ const ProductDetail = () => {
                   <p className="text-muted-foreground">Carbos</p>
                 </div>
                 <div className="bg-muted p-2 rounded">
-                  <p className="font-semibold">{product.nutritionalInfo.fat}g</p>
+                  <p className="font-semibold">
+                    {product.nutritionalInfo.fat}g
+                  </p>
                   <p className="text-muted-foreground">Grasa</p>
                 </div>
               </div>

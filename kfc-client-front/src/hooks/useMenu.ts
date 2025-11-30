@@ -7,7 +7,9 @@ export const useMenu = () => {
     queryFn: async () => {
       const response = await menuService.getMenu();
       if (response.success) {
-        return response.data || [];
+        // Backend returns { items: [...], categories: {...}, totalItems: N }
+        const data = response.data as any;
+        return data?.items || data || [];
       }
       throw new Error(response.error);
     },
@@ -21,11 +23,14 @@ export const useMenuByCategory = (category: string) => {
     queryFn: async () => {
       const response = await menuService.getMenuByCategory(category);
       if (response.success) {
-        return response.data || [];
+        // Backend returns { items: [...], categories: {...}, totalItems: N }
+        const data = response.data as any;
+        return data?.items || data || [];
       }
       throw new Error(response.error);
     },
     staleTime: 5 * 60 * 1000,
+    enabled: !!category,
   });
 };
 

@@ -37,6 +37,7 @@ provider:
     ORDER_EVENTS_BUS: kfc-events-${self:provider.stage}
     ORDERS_QUEUE_URL: !Ref OrdersQueue
     NOTIFICATIONS_TOPIC_ARN: !Ref NotificationsTopic
+    ASSETS_BUCKET: kfc-assets-${self:provider.stage}-595645243021
 
   # ============================================
   # Deshabilitar logs automáticos (requieren IAM)
@@ -53,10 +54,10 @@ custom:
     noDeploy:
       - boto3
       - botocore
-  
+
   # CORS configuration for all HTTP endpoints
   corsConfig:
-    origin: '*'
+    origin: "*"
     headers:
       - Content-Type
       - X-Amz-Date
@@ -181,6 +182,23 @@ functions:
     events:
       - http:
           path: /tenants/{tenantId}/menu/{itemId}
+          method: delete
+          cors: ${self:custom.corsConfig}
+
+  # ==================== UPLOAD HANDLERS ====================
+  getUploadUrl:
+    handler: src/handlers/uploads.get_upload_url_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/uploads/url
+          method: get
+          cors: ${self:custom.corsConfig}
+
+  deleteAsset:
+    handler: src/handlers/uploads.delete_asset_handler
+    events:
+      - http:
+          path: /tenants/{tenantId}/uploads/{key}
           method: delete
           cors: ${self:custom.corsConfig}
 

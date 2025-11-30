@@ -41,7 +41,7 @@ const MenuPage = () => {
       name: item.name,
       price: item.price,
       quantity: 1,
-      image: item.imageUrl || "/placeholder-food.jpg",
+      image: item.image || "/placeholder-food.jpg",
     });
     toast.success(`${item.name} agregado al carrito`);
   };
@@ -96,9 +96,9 @@ const MenuPage = () => {
                   className="relative aspect-square bg-muted"
                   onClick={() => navigate(`/product/${item.itemId}`)}
                 >
-                  {item.imageUrl ? (
+                  {item.image ? (
                     <img
-                      src={item.imageUrl}
+                      src={item.image}
                       alt={item.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                     />
@@ -112,7 +112,7 @@ const MenuPage = () => {
                       -{item.discount}%
                     </Badge>
                   )}
-                  {!item.available && (
+                  {item.isAvailable === false && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                       <span className="text-white font-bold">
                         No disponible
@@ -158,7 +158,7 @@ const MenuPage = () => {
                         e.stopPropagation();
                         handleAddToCart(item);
                       }}
-                      disabled={!item.available}
+                      disabled={item.isAvailable === false}
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       Agregar
