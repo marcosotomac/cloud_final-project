@@ -49,13 +49,16 @@ export const useMenuItemReviews = (itemId: string) => {
     queryFn: async () => {
       const response = await menuService.getItemReviews(itemId);
       if (response.success) {
-        return response.data || [];
+        return response.data;
       }
       throw new Error(response.error);
     },
     enabled: !!itemId,
   });
 };
+
+// Alias for backward compatibility
+export const useProductReviews = useMenuItemReviews;
 
 export const useAddItemReview = () => {
   const queryClient = useQueryClient();

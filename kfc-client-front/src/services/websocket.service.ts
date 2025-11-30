@@ -139,6 +139,10 @@ class WebSocketService {
   subscribeToOrderUpdates(handler: MessageHandler): () => void {
     return this.on("order_update", handler);
   }
+
+  onOrderUpdate(handler: MessageHandler): () => void {
+    return this.on("order_update", handler);
+  }
 }
 
 export const wsService = new WebSocketService();

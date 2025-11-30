@@ -15,6 +15,9 @@ export const useActivePromotions = () => {
   });
 };
 
+// Alias for backward compatibility
+export const usePromotions = useActivePromotions;
+
 export const useValidatePromoCode = () => {
   return useMutation({
     mutationFn: async (code: string) => {

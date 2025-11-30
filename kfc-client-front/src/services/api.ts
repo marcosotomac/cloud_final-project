@@ -29,6 +29,7 @@ export interface MenuItem {
   price: number;
   category: string;
   image?: string;
+  imageUrl?: string;
   available: boolean;
   preparationTime?: number;
   ingredients?: string[];
@@ -38,6 +39,19 @@ export interface MenuItem {
     carbs?: number;
     fat?: number;
   };
+  // Extended properties for product detail
+  originalPrice?: number;
+  customizations?: Array<{
+    type: string;
+    required?: number;
+    options?: Array<{
+      id: string;
+      name: string;
+      extraPrice?: number;
+    }>;
+  }>;
+  allergens?: string[];
+  rating?: number;
 }
 
 export interface OrderItem {
@@ -54,6 +68,7 @@ export interface Order {
   customerId: string;
   items: OrderItem[];
   status: string;
+  orderType?: "pickup" | "delivery" | "dine-in";
   total: number;
   subtotal: number;
   tax: number;
@@ -65,15 +80,18 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   estimatedDeliveryTime?: string;
+  rating?: number;
 }
 
 export interface Address {
   addressId?: string;
   street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
+  apartment?: string;
+  reference?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
   isDefault?: boolean;
   label?: string;
 }
@@ -115,6 +133,12 @@ export interface Rating {
   rating: number;
   comment?: string;
   createdAt: string;
+}
+
+export interface ReviewSummary {
+  averageRating: number;
+  totalReviews: number;
+  reviews: Rating[];
 }
 
 // API Client

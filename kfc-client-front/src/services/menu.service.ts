@@ -1,4 +1,4 @@
-import apiClient, { ApiResponse, MenuItem, Rating } from "./api";
+import apiClient, { ApiResponse, MenuItem, Rating, ReviewSummary } from "./api";
 import { API_CONFIG, ENDPOINTS } from "@/config/api";
 
 class MenuService {
@@ -23,10 +23,35 @@ class MenuService {
     return response;
   }
 
-  async getItemReviews(itemId: string): Promise<ApiResponse<Rating[]>> {
-    return apiClient.get<Rating[]>(
+  async getItemReviews(itemId: string): Promise<ApiResponse<ReviewSummary>> {
+    const response = await apiClient.get<Rating[]>(
       ENDPOINTS.MENU_ITEM_REVIEWS(this.tenantId, itemId)
     );
+
+    // Transform Rating[] to ReviewSummary
+    if (response.success && response.data) {
+      const ratings = response.data;
+      const totalReviews = ratings.length;
+      const averageRating =
+        totalReviews > 0
+          ? ratings.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+          : 0;
+
+      return {
+        success: true,
+        data: {
+          averageRating,
+          totalReviews,
+          reviews: ratings,
+        },
+      };
+    }
+
+    return {
+      success: response.success,
+      data: { averageRating: 0, totalReviews: 0, reviews: [] },
+      error: response.error,
+    };
   }
 
   async addItemReview(

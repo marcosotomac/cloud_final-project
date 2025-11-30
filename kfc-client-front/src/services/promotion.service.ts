@@ -4,6 +4,8 @@ import { API_CONFIG, ENDPOINTS } from "@/config/api";
 export interface PromoValidation {
   valid: boolean;
   promotion?: Promotion;
+  discount?: number;
+  discountType?: "percentage" | "fixed";
   message?: string;
 }
 

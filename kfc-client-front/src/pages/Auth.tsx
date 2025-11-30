@@ -12,8 +12,7 @@ import authService from "@/services/auth.service";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { login, loginWithPhone, register, isAuthenticated, isLoading } =
-    useAuth();
+  const { login, register, isAuthenticated, isLoading } = useAuth();
 
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
@@ -43,9 +42,13 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      await login(email, password);
-      toast.success("¡Bienvenido!");
-      navigate("/");
+      const result = await login({ email, password });
+      if (result.success) {
+        toast.success("¡Bienvenido!");
+        navigate("/");
+      } else {
+        toast.error(result.error || "Error al iniciar sesión");
+      }
     } catch (error: any) {
       toast.error(error.message || "Error al iniciar sesión");
     } finally {
@@ -58,36 +61,14 @@ const Auth = () => {
       toast.error("Ingresa un número de celular válido");
       return;
     }
-
-    setLoading(true);
-    try {
-      await authService.sendOTP({ phone });
-      setOtpSent(true);
-      toast.success("Código enviado a tu celular");
-    } catch (error: any) {
-      toast.error(error.message || "Error al enviar código");
-    } finally {
-      setLoading(false);
-    }
+    // OTP login not implemented yet - show message
+    toast.info("El inicio de sesión por celular estará disponible pronto");
   };
 
   const handlePhoneLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otp) {
-      toast.error("Ingresa el código de verificación");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await loginWithPhone(phone, otp);
-      toast.success("¡Bienvenido!");
-      navigate("/");
-    } catch (error: any) {
-      toast.error(error.message || "Código inválido");
-    } finally {
-      setLoading(false);
-    }
+    // OTP login not implemented yet
+    toast.info("El inicio de sesión por celular estará disponible pronto");
   };
 
   const handleRegister = async (e: React.FormEvent) => {

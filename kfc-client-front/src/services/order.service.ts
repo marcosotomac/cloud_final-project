@@ -7,9 +7,17 @@ import apiClient, {
 } from "./api";
 import { API_CONFIG, ENDPOINTS } from "@/config/api";
 
+export interface CreateOrderItem {
+  itemId: string;
+  quantity: number;
+  notes?: string;
+  customizations?: Record<string, string>;
+}
+
 export interface CreateOrderData {
-  items: OrderItem[];
-  deliveryAddress?: Address;
+  items: CreateOrderItem[];
+  orderType?: "delivery" | "pickup" | "dine-in";
+  deliveryAddress?: Partial<Address>;
   paymentMethod: string;
   notes?: string;
   promoCode?: string;

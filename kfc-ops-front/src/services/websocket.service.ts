@@ -39,7 +39,8 @@ class WebSocketService {
         // Subscribe to operations channel
         this.send({
           action: "subscribe",
-          channels: ["orders", "kitchen", "inventory", "staff"],
+          type: "subscription",
+          data: { channels: ["orders", "kitchen", "inventory", "staff"] },
         });
       };
 

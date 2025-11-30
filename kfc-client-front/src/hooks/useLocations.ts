@@ -31,6 +31,28 @@ export const useNearbyLocations = (lat?: number, lng?: number) => {
   });
 };
 
+export const useDeliveryCoverage = (lat: number, lng: number) => {
+  return useQuery({
+    queryKey: ["delivery-coverage", lat, lng],
+    queryFn: async () => {
+      const response = await locationService.checkDeliveryAvailability({
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        lat,
+        lng,
+      });
+      if (response.success) {
+        return response.data;
+      }
+      throw new Error(response.error);
+    },
+    enabled: lat !== 0 && lng !== 0,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
 export const useCheckDelivery = () => {
   return useMutation({
     mutationFn: async (address: Address) => {

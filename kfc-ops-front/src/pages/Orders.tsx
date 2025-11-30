@@ -110,7 +110,7 @@ const Orders = () => {
       addNotification({
         title: "Estado Actualizado",
         message: `Orden ${orderId} actualizada`,
-        type: "success",
+        type: "order",
       });
     } catch (error: any) {
       toast.error(error.message || "Error al actualizar orden");

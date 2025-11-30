@@ -193,28 +193,28 @@ const ProductDetail = () => {
             </div>
 
             {/* Nutrition info */}
-            {product.nutritionInfo && (
+            {product.nutritionalInfo && (
               <div className="grid grid-cols-4 gap-2 mb-4 text-center text-xs">
                 <div className="bg-muted p-2 rounded">
                   <p className="font-semibold">
-                    {product.nutritionInfo.calories}
+                    {product.nutritionalInfo.calories}
                   </p>
                   <p className="text-muted-foreground">Calorías</p>
                 </div>
                 <div className="bg-muted p-2 rounded">
                   <p className="font-semibold">
-                    {product.nutritionInfo.protein}g
+                    {product.nutritionalInfo.protein}g
                   </p>
                   <p className="text-muted-foreground">Proteína</p>
                 </div>
                 <div className="bg-muted p-2 rounded">
                   <p className="font-semibold">
-                    {product.nutritionInfo.carbs}g
+                    {product.nutritionalInfo.carbs}g
                   </p>
                   <p className="text-muted-foreground">Carbos</p>
                 </div>
                 <div className="bg-muted p-2 rounded">
-                  <p className="font-semibold">{product.nutritionInfo.fat}g</p>
+                  <p className="font-semibold">{product.nutritionalInfo.fat}g</p>
                   <p className="text-muted-foreground">Grasa</p>
                 </div>
               </div>

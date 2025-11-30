@@ -111,6 +111,15 @@ export interface DashboardStats {
   lowStockItems: number;
   ordersByStatus: Record<string, number>;
   hourlyOrders: { hour: string; count: number }[];
+  // Additional fields for dashboard UI
+  salesTotal?: number;
+  salesChange?: number;
+  activeOrders?: number;
+  customersServed?: number;
+  customerChange?: number;
+  prepTimeChange?: number;
+  salesByHour?: { hour: string; ventas: number }[];
+  topProducts?: { name: string; sales: number }[];
 }
 
 export interface WorkflowStats {
