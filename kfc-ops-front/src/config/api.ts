@@ -1,6 +1,6 @@
 // API Configuration for KFC Operations Frontend
 export const API_CONFIG = {
-  BASE_URL: "https://9ppqe2n4ul.execute-api.us-east-1.amazonaws.com/dev",
+  BASE_URL: "https://f1n09qhtr6.execute-api.us-east-1.amazonaws.com",
   WS_URL: "wss://7c4562ajgh.execute-api.us-east-1.amazonaws.com/dev",
   TENANT_ID: "kfc-main",
 };
@@ -19,6 +19,18 @@ export const ENDPOINTS = {
   ORDERS: `/tenants/${API_CONFIG.TENANT_ID}/orders`,
   ORDER: (orderId: string) =>
     `/tenants/${API_CONFIG.TENANT_ID}/orders/${orderId}`,
+  ORDERS_BY_STATUS: (status: string) =>
+    `/tenants/${API_CONFIG.TENANT_ID}/orders/status/${status}`,
+  ORDER_CANCEL: (orderId: string) =>
+    `/tenants/${API_CONFIG.TENANT_ID}/orders/${orderId}/cancel`,
+  ORDER_TRACK: (orderId: string) =>
+    `/tenants/${API_CONFIG.TENANT_ID}/orders/${orderId}/track`,
+  ORDER_RATING: (orderId: string) =>
+    `/tenants/${API_CONFIG.TENANT_ID}/orders/${orderId}/rating`,
+  ORDER_PAYMENT: (orderId: string) =>
+    `/tenants/${API_CONFIG.TENANT_ID}/orders/${orderId}/payment`,
+  ORDER_PAYMENTS: (orderId: string) =>
+    `/tenants/${API_CONFIG.TENANT_ID}/orders/${orderId}/payments`,
   QUEUE: `/tenants/${API_CONFIG.TENANT_ID}/queue`,
   ORDER_QUEUE: (orderId: string) =>
     `/tenants/${API_CONFIG.TENANT_ID}/queue/${orderId}`,
@@ -45,6 +57,11 @@ export const ENDPOINTS = {
     `/tenants/${API_CONFIG.TENANT_ID}/menu/${itemId}`,
   MENU_ITEM_AVAILABILITY: (itemId: string) =>
     `/tenants/${API_CONFIG.TENANT_ID}/menu/${itemId}/availability`,
+  MENU_ITEM_REVIEWS: (itemId: string) =>
+    `/tenants/${API_CONFIG.TENANT_ID}/menu/${itemId}/reviews`,
+
+  // Uploads
+  UPLOAD_URL: `/tenants/${API_CONFIG.TENANT_ID}/uploads/url`,
 
   // Inventory
   INVENTORY: `/tenants/${API_CONFIG.TENANT_ID}/inventory`,
@@ -52,7 +69,7 @@ export const ENDPOINTS = {
     `/tenants/${API_CONFIG.TENANT_ID}/inventory/${itemId}`,
   INVENTORY_ADJUST: (itemId: string) =>
     `/tenants/${API_CONFIG.TENANT_ID}/inventory/${itemId}/adjust`,
-  INVENTORY_ALERTS: `/tenants/${API_CONFIG.TENANT_ID}/inventory/alerts`,
+  INVENTORY_ALERTS: `/tenants/${API_CONFIG.TENANT_ID}/inventory/alerts/low-stock`,
 
   // Staff Management
   STAFF: `/tenants/${API_CONFIG.TENANT_ID}/staff`,
@@ -68,11 +85,22 @@ export const ENDPOINTS = {
   LOCATIONS: `/tenants/${API_CONFIG.TENANT_ID}/locations`,
   LOCATION: (locationId: string) =>
     `/tenants/${API_CONFIG.TENANT_ID}/locations/${locationId}`,
+  LOCATIONS_NEARBY: `/tenants/${API_CONFIG.TENANT_ID}/locations/nearby`,
+  LOCATIONS_CHECK_DELIVERY: `/tenants/${API_CONFIG.TENANT_ID}/locations/check-delivery`,
 
   // Promotions Management
   PROMOTIONS: `/tenants/${API_CONFIG.TENANT_ID}/promotions`,
   PROMOTION: (promotionId: string) =>
     `/tenants/${API_CONFIG.TENANT_ID}/promotions/${promotionId}`,
+  PROMOTIONS_ACTIVE: `/tenants/${API_CONFIG.TENANT_ID}/promotions/active`,
+  PROMOTIONS_VALIDATE: `/tenants/${API_CONFIG.TENANT_ID}/promotions/validate`,
+  PROMOTIONS_APPLY: `/tenants/${API_CONFIG.TENANT_ID}/promotions/apply`,
+
+  // Ratings
+  RATINGS: `/tenants/${API_CONFIG.TENANT_ID}/ratings`,
+
+  // Payment Methods
+  PAYMENT_METHODS: `/tenants/${API_CONFIG.TENANT_ID}/payment-methods`,
 
   // Notifications
   NOTIFICATIONS: "/notifications",

@@ -4,13 +4,39 @@ import orderService, {
   PaymentData,
 } from "@/services/order.service";
 
+const mapBackendStatus = (status?: string) => {
+  const normalized = (status || "").toLowerCase().replace(/_/g, "-");
+  const statusMap: Record<string, string> = {
+    pending: "pending",
+    confirmed: "confirmed",
+    received: "confirmed",
+    preparing: "preparing",
+    cooking: "preparing",
+    cooked: "ready",
+    packing: "ready",
+    packed: "out-for-delivery",
+    ready: "ready",
+    "ready-for-delivery": "out-for-delivery",
+    delivering: "out-for-delivery",
+    "out-for-delivery": "out-for-delivery",
+    delivered: "delivered",
+    completed: "delivered",
+    cancelled: "cancelled",
+  };
+  return statusMap[normalized] || normalized || "pending";
+};
+
 export const useOrders = () => {
   return useQuery({
     queryKey: ["orders"],
     queryFn: async () => {
       const response = await orderService.getOrders();
       if (response.success) {
-        return response.data || [];
+        const orders = response.data || [];
+        return orders.map((order: any) => ({
+          ...order,
+          status: mapBackendStatus(order.status),
+        }));
       }
       throw new Error(response.error);
     },
@@ -23,7 +49,9 @@ export const useOrder = (orderId: string) => {
     queryFn: async () => {
       const response = await orderService.getOrder(orderId);
       if (response.success) {
-        return response.data;
+        const order = response.data;
+        if (!order) return order;
+        return { ...order, status: mapBackendStatus(order.status) };
       }
       throw new Error(response.error);
     },

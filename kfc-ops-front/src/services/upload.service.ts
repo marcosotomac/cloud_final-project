@@ -1,4 +1,5 @@
 import api from "./api";
+import { API_CONFIG } from "@/config/api";
 
 export interface UploadUrlResponse {
   uploadUrl: string;
@@ -22,7 +23,7 @@ export const uploadService = {
       folder,
     });
     const response = await api.get<UploadUrlResponse>(
-      `/uploads/url?${params.toString()}`
+      `/tenants/${API_CONFIG.TENANT_ID}/uploads/url?${params.toString()}`
     );
     if (response.success && response.data) {
       return response.data;

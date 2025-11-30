@@ -27,7 +27,7 @@ def create_order_handler(event, context):
         body = json.loads(event.get('body', '{}'))
 
         # Validate required fields
-        required_fields = ['customerId', 'items', 'deliveryAddress']
+        required_fields = ['customerId', 'items']
         for field in required_fields:
             if not body.get(field):
                 return error_response(f'Missing required field: {field}')
@@ -40,11 +40,19 @@ def create_order_handler(event, context):
         order_id = str(ulid.new())
         now = datetime.utcnow().isoformat()
 
+        # Normalize order type
+        order_type = (body.get('orderType') or 'delivery').lower()
+
+        # Delivery address validation for delivery orders
+        if order_type == 'delivery' and not body.get('deliveryAddress'):
+            return error_response('Delivery address is required for delivery orders')
+
         # Calculate totals
         subtotal = sum(item.get('price', 0) * item.get('quantity', 1)
                        for item in body['items'])
         tax = subtotal * 0.18  # 18% IGV
-        delivery_fee = body.get('deliveryFee', 5.0)
+        default_delivery_fee = 0 if order_type != 'delivery' else 5.0
+        delivery_fee = body.get('deliveryFee', default_delivery_fee)
         total = subtotal + tax + delivery_fee
 
         # Generate order number
@@ -65,14 +73,15 @@ def create_order_handler(event, context):
             'customerPhone': body.get('customerPhone', ''),
             'customerEmail': body.get('customerEmail', ''),
             'items': body['items'],
+            'orderType': order_type,
             'subtotal': subtotal,
             'tax': tax,
             'deliveryFee': delivery_fee,
             'total': total,
-            'deliveryAddress': body['deliveryAddress'],
+            'deliveryAddress': body.get('deliveryAddress', {}),
             'deliveryNotes': body.get('deliveryNotes', ''),
             'paymentMethod': body.get('paymentMethod', 'CASH'),
-            'paymentStatus': 'PENDING',
+            'paymentStatus': 'pending',
             'status': OrderStatus.PENDING.value,
             'statusHistory': [
                 {
@@ -125,22 +134,47 @@ def get_orders_handler(event, context):
 
         query_params = event.get('queryStringParameters') or {}
         limit = int(query_params.get('limit', 50))
+        status_filter = query_params.get('status')
+        date_filter = query_params.get('date')
 
         table = get_orders_table()
 
-        # Query orders for this tenant
-        orders = query_items(
-            table,
-            Key('PK').eq(f'TENANT#{tenant_id}') & Key(
-                'SK').begins_with('ORDER#'),
-            limit=limit,
-            scan_forward=False  # Most recent first
-        )
+        # Normalize status filter to backend enum format
+        if status_filter:
+            normalized_status = status_filter.replace('-', '_').upper()
+            valid_statuses = [s.value for s in OrderStatus]
+            if normalized_status not in valid_statuses:
+                return error_response(
+                    f'Invalid status. Valid values: {", ".join(valid_statuses)}'
+                )
 
-        return success_response({
-            'orders': orders,
-            'count': len(orders)
-        })
+            orders = query_items(
+                table,
+                Key('GSI1PK').eq(
+                    f'TENANT#{tenant_id}#STATUS#{normalized_status}'),
+                index_name='GSI1',
+                limit=limit,
+                scan_forward=False
+            )
+        else:
+            # Query orders for this tenant
+            orders = query_items(
+                table,
+                Key('PK').eq(f'TENANT#{tenant_id}') & Key(
+                    'SK').begins_with('ORDER#'),
+                limit=limit,
+                scan_forward=False  # Most recent first
+            )
+
+        # Optional filter by date (YYYY-MM-DD prefix)
+        if date_filter:
+            orders = [
+                o for o in orders
+                if str(o.get('createdAt', '')).startswith(date_filter)
+            ]
+
+        # Return a flat list to match frontend expectations
+        return success_response(orders)
 
     except Exception as e:
         print(f"Get orders error: {str(e)}")
@@ -185,8 +219,9 @@ def get_orders_by_status_handler(event, context):
             return error_response('Tenant ID and Status are required')
 
         # Validate status
+        normalized_status = status.replace('-', '_').upper()
         valid_statuses = [s.value for s in OrderStatus]
-        if status not in valid_statuses:
+        if normalized_status not in valid_statuses:
             return error_response(f'Invalid status. Valid values: {", ".join(valid_statuses)}')
 
         table = get_orders_table()
@@ -194,14 +229,15 @@ def get_orders_by_status_handler(event, context):
         # Query orders by status using GSI1
         orders = query_items(
             table,
-            Key('GSI1PK').eq(f'TENANT#{tenant_id}#STATUS#{status}'),
+            Key('GSI1PK').eq(
+                f'TENANT#{tenant_id}#STATUS#{normalized_status}'),
             index_name='GSI1',
             scan_forward=False
         )
 
         return success_response({
             'orders': orders,
-            'status': status,
+            'status': normalized_status,
             'count': len(orders)
         })
 
@@ -351,7 +387,8 @@ def update_order_status_handler(event, context):
 
         body = json.loads(event.get('body', '{}'))
 
-        new_status = body.get('status')
+        new_status_raw = body.get('status')
+        new_status = new_status_raw.replace('-', '_').upper() if new_status_raw else None
         if not new_status:
             return error_response('Status is required')
 

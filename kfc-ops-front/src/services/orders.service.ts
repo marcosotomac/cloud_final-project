@@ -34,7 +34,17 @@ class OrdersService {
     const queryString = params.toString();
     if (queryString) endpoint += `?${queryString}`;
 
-    return apiClient.get<Order[]>(endpoint);
+    const response = await apiClient.get<Order[] | { orders?: Order[] }>(
+      endpoint
+    );
+
+    if (response.success) {
+      const data = response.data as any;
+      const orders = Array.isArray(data) ? data : data?.orders;
+      return { ...response, data: orders ?? [] };
+    }
+
+    return response as ApiResponse<Order[]>;
   }
 
   // Get single order details

@@ -19,7 +19,7 @@ provider:
   httpApi:
     cors:
       allowedOrigins:
-        - '*'
+        - "*"
       allowedHeaders:
         - Content-Type
         - Authorization
@@ -785,8 +785,8 @@ resources:
       Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
 
     WebSocketApiEndpoint:
-      Description: "WebSocket API Endpoint"  
-      Value: !Sub 
+      Description: "WebSocket API Endpoint"
+      Value: !Sub
         - "wss://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
         - Stage: ${self:provider.stage}
 

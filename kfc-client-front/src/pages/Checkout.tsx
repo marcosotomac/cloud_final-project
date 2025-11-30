@@ -58,6 +58,11 @@ const Checkout = () => {
       return;
     }
 
+    if (!user) {
+      toast.error("No pudimos validar tu sesión, intenta nuevamente");
+      return;
+    }
+
     if (items.length === 0) {
       toast.error("Tu carrito está vacío");
       return;
@@ -69,26 +74,45 @@ const Checkout = () => {
     }
 
     try {
+      const deliveryAddressData =
+        orderType === "delivery"
+          ? address
+          : { street: "Recojo en tienda" };
+
       const orderData = {
+        customerId: user.userId,
+        customerName: user.name,
+        customerEmail: user.email,
+        customerPhone: user.phone,
         items: items.map((item) => ({
           itemId: item.id,
           quantity: item.quantity,
-          notes: item.recipe || "",
+          price: item.price,
+          name: item.name,
+          notes: item.recipe || undefined,
           customizations: item.complement
             ? { complement: item.complement }
             : undefined,
         })),
         orderType,
         paymentMethod,
-        deliveryAddress: orderType === "delivery" ? address : undefined,
+        deliveryAddress: deliveryAddressData,
+        deliveryFee,
+        deliveryNotes:
+          orderType === "delivery"
+            ? address.reference || undefined
+            : "Recojo en tienda",
         promoCode: promoCode || undefined,
       };
 
       const result = await createOrder.mutateAsync(orderData);
       clearCart();
       toast.success("¡Pedido realizado con éxito!");
-      navigate(`/order/${result?.orderId}`);
+      if (result?.orderId) {
+        navigate(`/order/${result.orderId}`);
+      }
     } catch (error) {
+      console.error("Checkout error", error);
       toast.error("Error al procesar tu pedido");
     }
   };

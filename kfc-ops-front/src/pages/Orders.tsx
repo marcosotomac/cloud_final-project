@@ -23,18 +23,26 @@ import { toast } from "sonner";
 // Map API status to UI status
 type UIStatus = "pending" | "kitchen" | "packing" | "delivery";
 const mapApiStatusToUI = (apiStatus: string): UIStatus => {
+  const normalized = (apiStatus || "")
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-");
   const statusMap: Record<string, UIStatus> = {
     pending: "pending",
     confirmed: "pending",
+    received: "pending",
     preparing: "kitchen",
     cooking: "kitchen",
     cooked: "packing",
     ready: "packing",
+    packing: "packing",
     packed: "delivery",
-    out_for_delivery: "delivery",
+    "out-for-delivery": "delivery",
     delivering: "delivery",
+    delivered: "delivery",
+    completed: "delivery",
   };
-  return statusMap[apiStatus] || "pending";
+  return statusMap[normalized] || "pending";
 };
 
 // Transform API order to UI format

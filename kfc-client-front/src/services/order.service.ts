@@ -10,16 +10,24 @@ import { API_CONFIG, ENDPOINTS } from "@/config/api";
 export interface CreateOrderItem {
   itemId: string;
   quantity: number;
+  price: number;
+  name?: string;
   notes?: string;
   customizations?: Record<string, string>;
 }
 
 export interface CreateOrderData {
+  customerId: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
   items: CreateOrderItem[];
   orderType?: "delivery" | "pickup" | "dine-in";
   deliveryAddress?: Partial<Address>;
+  deliveryFee?: number;
   paymentMethod: string;
   notes?: string;
+  deliveryNotes?: string;
   promoCode?: string;
 }
 

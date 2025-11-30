@@ -1,6 +1,6 @@
 // API Configuration for KFC Client Frontend
 export const API_CONFIG = {
-  BASE_URL: "https://9ppqe2n4ul.execute-api.us-east-1.amazonaws.com/dev",
+  BASE_URL: "https://f1n09qhtr6.execute-api.us-east-1.amazonaws.com",
   WS_URL: "wss://7c4562ajgh.execute-api.us-east-1.amazonaws.com/dev",
   TENANT_ID: "kfc-main", // Default tenant ID - can be changed per deployment
 };
