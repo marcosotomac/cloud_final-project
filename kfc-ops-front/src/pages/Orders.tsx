@@ -1,119 +1,120 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { OrderCard, Order } from "@/components/OrderCard";
+import { OrderCard } from "@/components/OrderCard";
 import { DndContext, DragEndEvent, closestCorners } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Filter, Bell } from "lucide-react";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { Bell, Loader2, RefreshCw } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Badge } from "@/components/ui/badge";
+import {
+  useOrders,
+  useTakeOrder,
+  useStartCooking,
+  usePackOrder,
+  useStartDelivery,
+  useCompleteOrder,
+} from "@/hooks/useOrders";
+import { toast } from "sonner";
 
-const mockOrders: Order[] = [
-  {
-    id: "ORD-001",
-    customer: "Juan Pérez",
-    items: [
-      { name: "Bucket 8 pzas", quantity: 1 },
-      { name: "Papas Grandes", quantity: 2 },
-      { name: "Coca Cola 1L", quantity: 1 },
-    ],
-    total: 12.99,
-    status: "pending",
-    createdAt: new Date(Date.now() - 5 * 60000),
-  },
-  {
-    id: "ORD-002",
-    customer: "María García",
-    items: [
-      { name: "Zinger Sandwich", quantity: 1 },
-      { name: "Papas Medianas", quantity: 1 },
-    ],
-    total: 8.99,
-    status: "kitchen",
-    createdAt: new Date(Date.now() - 12 * 60000),
-  },
-  {
-    id: "ORD-003",
-    customer: "Carlos Ruiz",
-    items: [{ name: "Popcorn Chicken", quantity: 2 }],
-    total: 6.5,
-    status: "packing",
-    createdAt: new Date(Date.now() - 8 * 60000),
-  },
-  {
-    id: "ORD-004",
-    customer: "Ana López",
-    items: [
-      { name: "Family Feast", quantity: 1 },
-      { name: "Ensalada Cole Slaw", quantity: 2 },
-    ],
-    total: 24.99,
-    status: "delivery",
-    createdAt: new Date(Date.now() - 15 * 60000),
-  },
-];
+// Map API status to UI status
+type UIStatus = "pending" | "kitchen" | "packing" | "delivery";
+const mapApiStatusToUI = (apiStatus: string): UIStatus => {
+  const statusMap: Record<string, UIStatus> = {
+    pending: "pending",
+    confirmed: "pending",
+    preparing: "kitchen",
+    cooking: "kitchen",
+    cooked: "packing",
+    ready: "packing",
+    packed: "delivery",
+    out_for_delivery: "delivery",
+    delivering: "delivery",
+  };
+  return statusMap[apiStatus] || "pending";
+};
+
+// Transform API order to UI format
+interface UIOrder {
+  id: string;
+  customer: string;
+  items: { name: string; quantity: number }[];
+  total: number;
+  status: UIStatus;
+  createdAt: Date;
+  apiStatus: string;
+}
 
 const Orders = () => {
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
-  const [filterStatus, setFilterStatus] = useState<Order["status"] | "all">("all");
+  const [filterStatus, setFilterStatus] = useState<UIStatus | "all">("all");
   const { addNotification } = useNotifications();
 
-  // Simulate new orders
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const shouldAddOrder = Math.random() > 0.7;
-      if (shouldAddOrder) {
-        const newOrder: Order = {
-          id: `ORD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-          customer: ["Pedro Martínez", "Laura Sánchez", "Diego Torres"][
-            Math.floor(Math.random() * 3)
-          ],
-          items: [
-            { name: "Bucket 8 pzas", quantity: 1 },
-            { name: "Papas Medianas", quantity: 2 },
-          ],
-          total: Math.random() * 20 + 5,
-          status: "pending",
-          createdAt: new Date(),
-        };
-        setOrders((prev) => [newOrder, ...prev]);
-        addNotification({
-          title: "Nueva Orden",
-          message: `Orden ${newOrder.id} de ${newOrder.customer}`,
-          type: "order",
-        });
+  // Fetch real orders from API
+  const {
+    data: apiOrders = [],
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useOrders();
+
+  // Workflow mutations
+  const takeOrder = useTakeOrder();
+  const startCooking = useStartCooking();
+  const packOrder = usePackOrder();
+  const startDelivery = useStartDelivery();
+  const completeOrder = useCompleteOrder();
+
+  // Transform API orders to UI format
+  const orders: UIOrder[] = useMemo(() => {
+    if (!Array.isArray(apiOrders)) return [];
+
+    return apiOrders.map((order: any) => ({
+      id: order.orderId || order.id,
+      customer: order.customerName || order.customer?.name || "Cliente",
+      items:
+        order.items?.map((item: any) => ({
+          name: item.name || item.menuItemName || "Producto",
+          quantity: item.quantity || 1,
+        })) || [],
+      total: order.total || order.totalAmount || 0,
+      status: mapApiStatusToUI(order.status),
+      createdAt: new Date(order.createdAt || Date.now()),
+      apiStatus: order.status,
+    }));
+  }, [apiOrders]);
+
+  const handleStatusChange = async (orderId: string, newStatus: UIStatus) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    try {
+      // Determine which workflow action to call based on current and new status
+      if (order.status === "pending" && newStatus === "kitchen") {
+        // Take order and start cooking
+        await takeOrder.mutateAsync(orderId);
+        await startCooking.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} enviada a cocina`);
+      } else if (order.status === "kitchen" && newStatus === "packing") {
+        // Mark as ready for packing
+        await packOrder.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} lista para empaque`);
+      } else if (order.status === "packing" && newStatus === "delivery") {
+        // Start delivery
+        await startDelivery.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} en camino`);
       }
-    }, 30000); // Every 30 seconds
 
-    return () => clearInterval(interval);
-  }, [addNotification]);
-
-  // Check for slow orders
-  useEffect(() => {
-    const interval = setInterval(() => {
-      orders.forEach((order) => {
-        const minutesAgo = Math.floor(
-          (Date.now() - order.createdAt.getTime()) / 60000
-        );
-        if (minutesAgo > 15 && order.status !== "delivery") {
-          addNotification({
-            title: "Orden Retrasada",
-            message: `Orden ${order.id} lleva ${minutesAgo} minutos`,
-            type: "alert",
-          });
-        }
+      addNotification({
+        title: "Estado Actualizado",
+        message: `Orden ${orderId} actualizada`,
+        type: "success",
       });
-    }, 60000); // Every minute
-
-    return () => clearInterval(interval);
-  }, [orders, addNotification]);
-
-  const handleStatusChange = (orderId: string, newStatus: Order["status"]) => {
-    setOrders((prev) =>
-      prev.map((order) =>
-        order.id === orderId ? { ...order, status: newStatus } : order
-      )
-    );
+    } catch (error: any) {
+      toast.error(error.message || "Error al actualizar orden");
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -124,7 +125,7 @@ const Orders = () => {
     if (!activeOrder) return;
 
     // Determine the new status based on the drop zone
-    const newStatus = over.id as Order["status"];
+    const newStatus = over.id as UIStatus;
     handleStatusChange(activeOrder.id, newStatus);
   };
 
@@ -132,8 +133,19 @@ const Orders = () => {
     (order) => filterStatus === "all" || order.status === filterStatus
   );
 
-  const getOrdersByStatus = (status: Order["status"]) =>
+  const getOrdersByStatus = (status: UIStatus) =>
     orders.filter((order) => order.status === status);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando órdenes...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -147,73 +159,89 @@ const Orders = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`}
+            />
+          </Button>
           <Button variant="outline" size="icon">
             <Bell className="w-4 h-4" />
           </Button>
-          <Button>Nueva Orden</Button>
         </div>
       </div>
 
-      <Tabs defaultValue="all" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="all" onClick={() => setFilterStatus("all")}>
-            Todas
-            <Badge variant="secondary" className="ml-2">
-              {orders.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="pending" onClick={() => setFilterStatus("pending")}>
-            Pendientes
-            <Badge variant="secondary" className="ml-2">
-              {getOrdersByStatus("pending").length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="kitchen" onClick={() => setFilterStatus("kitchen")}>
-            Cocina
-            <Badge variant="secondary" className="ml-2">
-              {getOrdersByStatus("kitchen").length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="packing" onClick={() => setFilterStatus("packing")}>
-            Empaque
-            <Badge variant="secondary" className="ml-2">
-              {getOrdersByStatus("packing").length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="delivery" onClick={() => setFilterStatus("delivery")}>
-            Delivery
-            <Badge variant="secondary" className="ml-2">
-              {getOrdersByStatus("delivery").length}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
+      {orders.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground text-lg">
+            No hay órdenes activas
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Las nuevas órdenes aparecerán aquí automáticamente
+          </p>
+        </div>
+      ) : (
+        <Tabs defaultValue="all" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="all" onClick={() => setFilterStatus("all")}>
+              Todas
+              <Badge variant="secondary" className="ml-2">
+                {orders.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger
+              value="pending"
+              onClick={() => setFilterStatus("pending")}
+            >
+              Pendientes
+              <Badge variant="secondary" className="ml-2">
+                {getOrdersByStatus("pending").length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger
+              value="kitchen"
+              onClick={() => setFilterStatus("kitchen")}
+            >
+              Cocina
+              <Badge variant="secondary" className="ml-2">
+                {getOrdersByStatus("kitchen").length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger
+              value="packing"
+              onClick={() => setFilterStatus("packing")}
+            >
+              Empaque
+              <Badge variant="secondary" className="ml-2">
+                {getOrdersByStatus("packing").length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger
+              value="delivery"
+              onClick={() => setFilterStatus("delivery")}
+            >
+              Delivery
+              <Badge variant="secondary" className="ml-2">
+                {getOrdersByStatus("delivery").length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
 
-        <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-          <TabsContent value="all" className="space-y-4">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <SortableContext
-                items={filteredOrders.map((o) => o.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {filteredOrders.map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    onStatusChange={handleStatusChange}
-                  />
-                ))}
-              </SortableContext>
-            </div>
-          </TabsContent>
-
-          {["pending", "kitchen", "packing", "delivery"].map((status) => (
-            <TabsContent key={status} value={status} className="space-y-4">
+          <DndContext
+            collisionDetection={closestCorners}
+            onDragEnd={handleDragEnd}
+          >
+            <TabsContent value="all" className="space-y-4">
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <SortableContext
-                  items={getOrdersByStatus(status as Order["status"]).map((o) => o.id)}
+                  items={filteredOrders.map((o) => o.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {getOrdersByStatus(status as Order["status"]).map((order) => (
+                  {filteredOrders.map((order) => (
                     <OrderCard
                       key={order.id}
                       order={order}
@@ -223,9 +251,30 @@ const Orders = () => {
                 </SortableContext>
               </div>
             </TabsContent>
-          ))}
-        </DndContext>
-      </Tabs>
+
+            {(["pending", "kitchen", "packing", "delivery"] as UIStatus[]).map(
+              (status) => (
+                <TabsContent key={status} value={status} className="space-y-4">
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <SortableContext
+                      items={getOrdersByStatus(status).map((o) => o.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {getOrdersByStatus(status).map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          onStatusChange={handleStatusChange}
+                        />
+                      ))}
+                    </SortableContext>
+                  </div>
+                </TabsContent>
+              )
+            )}
+          </DndContext>
+        </Tabs>
+      )}
     </div>
   );
 };

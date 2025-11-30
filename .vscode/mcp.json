@@ -2,7 +2,16 @@
   "servers": {
     "serverless": {
       "command": "serverless",
-      "args": ["mcp"]
+      "args": [
+        "mcp"
+      ]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ]
     }
   }
 }

@@ -1,66 +1,13 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import PromoCard from "./PromoCard";
-import promoNuggets from "@/assets/promo-nuggets.jpg";
-import promoWings from "@/assets/promo-wings.jpg";
-import promoCombo from "@/assets/promo-combo.jpg";
-import promoBucket from "@/assets/promo-bucket.jpg";
-import promoTwister from "@/assets/promo-twister.jpg";
 import { useRef } from "react";
-
-const promos = [
-  {
-    id: 1,
-    image: promoNuggets,
-    title: "Mega Delivery - 6 Piezas",
-    description: "6 Piezas de Pollo y 1 Papa Familiar",
-    discount: "-32%",
-    originalPrice: "S/59.30",
-    currentPrice: "S/39.90",
-    badge: "GRANDES AHORROS",
-  },
-  {
-    id: 2,
-    image: promoWings,
-    title: "Wings & Krunch: 18 Hot Wings",
-    description: "18 Hot Wings y 1 Complemento Familiar",
-    discount: "-40%",
-    originalPrice: "S/63.20",
-    currentPrice: "S/37.90",
-    badge: "GRANDES AHORROS",
-  },
-  {
-    id: 3,
-    image: promoCombo,
-    title: "Mega Promo: 7 Piezas",
-    description: "7 Piezas de Pollo, 1 Complemento Familiar y 1 Bebida 1L",
-    currentPrice: "S/42.90",
-    badge: "GRANDES AHORROS",
-  },
-  {
-    id: 4,
-    image: promoBucket,
-    title: "Mega Promo - 8 Piezas",
-    description: "8 Piezas de Pollo y 1 Papa Familiar",
-    discount: "-33%",
-    originalPrice: "S/75.10",
-    currentPrice: "S/49.90",
-    badge: "GRANDES AHORROS",
-  },
-  {
-    id: 5,
-    image: promoTwister,
-    title: "Dúo Twister XL con Papas",
-    description: "2 Twisters XL Tradicionales y 2 Complementos Regulares",
-    discount: "-30%",
-    originalPrice: "S/56.60",
-    currentPrice: "S/38.90",
-    badge: "GRANDES AHORROS",
-  },
-];
+import { useActivePromotions } from "@/hooks/usePromotions";
 
 const PromosSection = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { data: promotions, isLoading, error } = useActivePromotions();
 
   const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
@@ -74,6 +21,10 @@ const PromosSection = () => {
       });
     }
   };
+
+  if (error) {
+    return null;
+  }
 
   return (
     <section className="py-8">
@@ -102,15 +53,59 @@ const PromosSection = () => {
           </div>
         </div>
 
-        <div
-          ref={scrollContainerRef}
-          className="flex gap-4 overflow-x-auto scrollbar-hide pb-4"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
-          {promos.map((promo) => (
-            <PromoCard key={promo.id} {...promo} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex gap-4 overflow-hidden">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="min-w-[280px]">
+                <Skeleton className="w-full aspect-[4/3] rounded-lg mb-3" />
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-8 w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : promotions && promotions.length > 0 ? (
+          <div
+            ref={scrollContainerRef}
+            className="flex gap-4 overflow-x-auto scrollbar-hide pb-4"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {promotions.map((promo: any) => (
+              <PromoCard
+                key={promo.promotionId || promo.id}
+                id={promo.promotionId || promo.id}
+                image={
+                  promo.imageUrl || promo.image || "/placeholder-promo.jpg"
+                }
+                title={promo.name || promo.title}
+                description={promo.description || ""}
+                discount={
+                  promo.discountPercentage
+                    ? `-${promo.discountPercentage}%`
+                    : promo.discount
+                    ? `-${promo.discount}%`
+                    : undefined
+                }
+                originalPrice={
+                  promo.originalPrice
+                    ? `S/${promo.originalPrice.toFixed(2)}`
+                    : undefined
+                }
+                currentPrice={`S/${(
+                  promo.price ||
+                  promo.discountedPrice ||
+                  0
+                ).toFixed(2)}`}
+                badge={promo.badge || promo.type || "PROMOCIÓN"}
+                price={promo.price || promo.discountedPrice || 0}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No hay promociones disponibles en este momento
+          </div>
+        )}
       </div>
     </section>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,63 +26,61 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserPlus, Search, Edit, Trash2 } from "lucide-react";
+import {
+  UserPlus,
+  Search,
+  Edit,
+  Trash2,
+  Loader2,
+  RefreshCw,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
+import {
+  useStaff,
+  useCreateStaff,
+  useUpdateStaff,
+  useDeleteStaff,
+} from "@/hooks/useStaff";
 
 interface StaffMember {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "cashier" | "cook" | "packer" | "delivery";
-  status: "active" | "inactive";
-  lastActive: string;
+  role:
+    | "manager"
+    | "cashier"
+    | "kitchen"
+    | "delivery"
+    | "admin"
+    | "cook"
+    | "packer";
+  status: "active" | "inactive" | "on-break";
+  lastActive?: string;
+  phone?: string;
 }
 
-const mockStaff: StaffMember[] = [
-  {
-    id: "1",
-    name: "Admin Principal",
-    email: "admin@kfc.com",
-    role: "admin",
-    status: "active",
-    lastActive: "Ahora",
-  },
-  {
-    id: "2",
-    name: "Carlos Rodríguez",
-    email: "carlos@kfc.com",
-    role: "cashier",
-    status: "active",
-    lastActive: "Hace 5 min",
-  },
-  {
-    id: "3",
-    name: "María González",
-    email: "maria@kfc.com",
-    role: "cook",
-    status: "active",
-    lastActive: "Hace 2 min",
-  },
-];
-
-const roleLabels = {
+const roleLabels: Record<string, string> = {
   admin: "Administrador",
+  manager: "Gerente",
   cashier: "Cajero",
+  kitchen: "Cocina",
   cook: "Cocinero",
   packer: "Empacador",
   delivery: "Delivery",
 };
 
-const roleColors = {
+const roleColors: Record<string, string> = {
   admin: "bg-purple-500/20 text-purple-700 dark:text-purple-400",
+  manager: "bg-purple-500/20 text-purple-700 dark:text-purple-400",
   cashier: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
+  kitchen: "bg-orange-500/20 text-orange-700 dark:text-orange-400",
   cook: "bg-orange-500/20 text-orange-700 dark:text-orange-400",
   packer: "bg-green-500/20 text-green-700 dark:text-green-400",
   delivery: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
 };
 
 const Staff = () => {
-  const [staff, setStaff] = useState<StaffMember[]>(mockStaff);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
@@ -90,13 +88,40 @@ const Staff = () => {
     name: "",
     email: "",
     role: "cashier" as StaffMember["role"],
+    password: "",
+    phone: "",
   });
 
-  const filteredStaff = staff.filter(
-    (member) =>
-      member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Fetch real data
+  const { data: staffData = [], isLoading, refetch, isRefetching } = useStaff();
+
+  // Mutations
+  const createStaff = useCreateStaff();
+  const updateStaff = useUpdateStaff();
+  const deleteStaff = useDeleteStaff();
+
+  // Transform API data
+  const staff: StaffMember[] = useMemo(() => {
+    if (!Array.isArray(staffData)) return [];
+
+    return staffData.map((member: any) => ({
+      id: member.staffId || member.id,
+      name: member.name,
+      email: member.email,
+      role: member.role || "cashier",
+      status: member.status || "active",
+      lastActive: member.lastActive || member.updatedAt || "Sin actividad",
+      phone: member.phone,
+    }));
+  }, [staffData]);
+
+  const filteredStaff = useMemo(() => {
+    return staff.filter(
+      (member) =>
+        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [staff, searchTerm]);
 
   const handleOpenDialog = (member?: StaffMember) => {
     if (member) {
@@ -105,55 +130,115 @@ const Staff = () => {
         name: member.name,
         email: member.email,
         role: member.role,
+        password: "",
+        phone: member.phone || "",
       });
     } else {
       setEditingStaff(null);
-      setFormData({ name: "", email: "", role: "cashier" });
+      setFormData({
+        name: "",
+        email: "",
+        role: "cashier",
+        password: "",
+        phone: "",
+      });
     }
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingStaff) {
-      setStaff(
-        staff.map((m) =>
-          m.id === editingStaff.id
-            ? { ...m, ...formData }
-            : m
-        )
-      );
-      toast.success("Usuario actualizado correctamente");
-    } else {
-      const newMember: StaffMember = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData,
-        status: "active",
-        lastActive: "Ahora",
-      };
-      setStaff([...staff, newMember]);
-      toast.success("Usuario registrado correctamente");
+  const handleSave = async () => {
+    try {
+      if (editingStaff) {
+        await updateStaff.mutateAsync({
+          staffId: editingStaff.id,
+          data: {
+            name: formData.name,
+            email: formData.email,
+            role: formData.role as any,
+          },
+        });
+        toast.success("Usuario actualizado correctamente");
+      } else {
+        await createStaff.mutateAsync({
+          name: formData.name,
+          email: formData.email,
+          role: formData.role as any,
+          password: formData.password || undefined,
+          phone: formData.phone || undefined,
+        });
+        toast.success("Usuario registrado correctamente");
+      }
+      setDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error.message || "Error al guardar usuario");
     }
-    setDialogOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setStaff(staff.filter((m) => m.id !== id));
-    toast.success("Usuario eliminado");
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteStaff.mutateAsync(id);
+      toast.success("Usuario eliminado");
+    } catch (error: any) {
+      toast.error(error.message || "Error al eliminar usuario");
+    }
   };
+
+  const formatLastActive = (lastActive: string) => {
+    if (!lastActive || lastActive === "Sin actividad") return "Sin actividad";
+
+    try {
+      const date = new Date(lastActive);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+
+      if (diffMins < 1) return "Ahora";
+      if (diffMins < 60) return `Hace ${diffMins} min`;
+      if (diffMins < 1440) return `Hace ${Math.floor(diffMins / 60)} horas`;
+      return `Hace ${Math.floor(diffMins / 1440)} días`;
+    } catch {
+      return lastActive;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando personal...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestión de Staff</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Gestión de Staff
+          </h1>
           <p className="text-muted-foreground mt-2">
             Administra el personal del restaurante
           </p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Registrar Usuario
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`}
+            />
+          </Button>
+          <Button onClick={() => handleOpenDialog()}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Registrar Usuario
+          </Button>
+        </div>
       </div>
 
       <Card className="p-6">
@@ -167,61 +252,106 @@ const Staff = () => {
               className="pl-10"
             />
           </div>
+          <div className="text-sm text-muted-foreground">
+            {staff.length} miembro{staff.length !== 1 ? "s" : ""} del personal
+          </div>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Rol</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Última Actividad</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredStaff.map((member) => (
-              <TableRow key={member.id}>
-                <TableCell className="font-medium">{member.name}</TableCell>
-                <TableCell>{member.email}</TableCell>
-                <TableCell>
-                  <Badge className={roleColors[member.role]}>
-                    {roleLabels[member.role]}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={member.status === "active" ? "default" : "secondary"}
-                  >
-                    {member.status === "active" ? "Activo" : "Inactivo"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {member.lastActive}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenDialog(member)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(member.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+        {staff.length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No hay personal registrado</p>
+            <Button className="mt-4" onClick={() => handleOpenDialog()}>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Registrar primer usuario
+            </Button>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Rol</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Última Actividad</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredStaff.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    No se encontraron resultados para "{searchTerm}"
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredStaff.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell className="font-medium">{member.name}</TableCell>
+                    <TableCell>{member.email}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={
+                          roleColors[member.role] || roleColors.cashier
+                        }
+                      >
+                        {roleLabels[member.role] || member.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          member.status === "active" ? "default" : "secondary"
+                        }
+                        className={
+                          member.status === "active"
+                            ? "bg-green-500/20 text-green-700"
+                            : ""
+                        }
+                      >
+                        {member.status === "active"
+                          ? "Activo"
+                          : member.status === "on-break"
+                          ? "En descanso"
+                          : "Inactivo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatLastActive(member.lastActive || "")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenDialog(member)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(member.id)}
+                          disabled={deleteStaff.isPending}
+                        >
+                          {deleteStaff.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -240,6 +370,7 @@ const Staff = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
+                placeholder="Ej: Juan Pérez"
               />
             </div>
             <div>
@@ -251,6 +382,33 @@ const Staff = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
+                placeholder="usuario@kfc.com"
+              />
+            </div>
+            {!editingStaff && (
+              <div>
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  placeholder="Mínimo 8 caracteres"
+                />
+              </div>
+            )}
+            <div>
+              <Label htmlFor="phone">Teléfono (opcional)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                placeholder="+51 999 999 999"
               />
             </div>
             <div>
@@ -258,7 +416,10 @@ const Staff = () => {
               <Select
                 value={formData.role}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, role: value as StaffMember["role"] })
+                  setFormData({
+                    ...formData,
+                    role: value as StaffMember["role"],
+                  })
                 }
               >
                 <SelectTrigger>
@@ -278,7 +439,20 @@ const Staff = () => {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave}>Guardar</Button>
+            <Button
+              onClick={handleSave}
+              disabled={
+                createStaff.isPending ||
+                updateStaff.isPending ||
+                !formData.name ||
+                !formData.email
+              }
+            >
+              {(createStaff.isPending || updateStaff.isPending) && (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              )}
+              Guardar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

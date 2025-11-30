@@ -1,12 +1,23 @@
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Trash2, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Cart = () => {
-  const { items, totalPrice } = useCart();
+  const { items, totalPrice, updateQuantity, removeItem, clearCart } =
+    useCart();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  const handleCheckout = () => {
+    if (!isAuthenticated) {
+      navigate("/auth");
+      return;
+    }
+    navigate("/checkout");
+  };
 
   if (items.length === 0) {
     return (
@@ -14,7 +25,9 @@ const Cart = () => {
         <Header />
 
         <div className="bg-primary py-4">
-          <h1 className="text-center text-2xl font-bold text-primary-foreground">Carrito</h1>
+          <h1 className="text-center text-2xl font-bold text-primary-foreground">
+            Carrito
+          </h1>
         </div>
 
         <main className="container mx-auto px-4 py-12">
@@ -26,17 +39,20 @@ const Cart = () => {
             </div>
 
             <div>
-              <h2 className="text-2xl font-bold mb-2">¡Tu carrito esta vacío!</h2>
+              <h2 className="text-2xl font-bold mb-2">
+                ¡Tu carrito está vacío!
+              </h2>
               <p className="text-muted-foreground">
-                Ingresa a nuestra carta y agrega los productos que desees a tu pedido
+                Ingresa a nuestra carta y agrega los productos que desees a tu
+                pedido
               </p>
             </div>
 
             <Button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/menu")}
               className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8 text-base font-semibold"
             >
-              Agregar productos
+              Ver menú
             </Button>
           </div>
         </main>
@@ -49,54 +65,132 @@ const Cart = () => {
       <Header />
 
       <div className="bg-primary py-4">
-        <h1 className="text-center text-2xl font-bold text-primary-foreground">Carrito</h1>
+        <h1 className="text-center text-2xl font-bold text-primary-foreground">
+          Carrito
+        </h1>
       </div>
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-muted-foreground">
+              {items.length} producto(s)
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearCart}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Vaciar carrito
+            </Button>
+          </div>
+
           <div className="space-y-4">
             {items.map((item) => (
-              <div key={item.id} className="bg-card border rounded-lg p-4 flex gap-4">
+              <div
+                key={item.id}
+                className="bg-card border rounded-lg p-4 flex gap-4"
+              >
                 <img
-                  src={item.image}
+                  src={item.image || "/placeholder-product.jpg"}
                   alt={item.name}
                   className="w-24 h-24 object-cover rounded"
                 />
                 <div className="flex-1">
-                  <h3 className="font-bold">{item.name}</h3>
-                  {item.recipe && (
-                    <p className="text-sm text-muted-foreground">Receta: {item.recipe}</p>
-                  )}
-                  {item.complement && (
-                    <p className="text-sm text-muted-foreground">
-                      Complemento: {item.complement}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold">{item.name}</h3>
+                      {item.recipe && (
+                        <p className="text-sm text-muted-foreground">
+                          Receta: {item.recipe}
+                        </p>
+                      )}
+                      {item.complement && (
+                        <p className="text-sm text-muted-foreground">
+                          Complemento: {item.complement}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeItem(item.id)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="flex justify-between items-end mt-4">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() =>
+                          updateQuantity(item.id, item.quantity - 1)
+                        }
+                        className="h-8 w-8"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <span className="w-8 text-center font-semibold">
+                        {item.quantity}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() =>
+                          updateQuantity(item.id, item.quantity + 1)
+                        }
+                        className="h-8 w-8"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-lg font-bold">
+                      S/{(item.price * item.quantity).toFixed(2)}
                     </p>
-                  )}
-                  <p className="font-semibold mt-2">S/{item.price.toFixed(2)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold">x{item.quantity}</p>
-                  <p className="text-lg font-bold">
-                    S/{(item.price * item.quantity).toFixed(2)}
-                  </p>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
 
           <div className="mt-8 bg-card border rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-lg">Subtotal</span>
-              <span className="text-lg">S/{totalPrice.toFixed(2)}</span>
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between items-center text-muted-foreground">
+                <span>Subtotal</span>
+                <span>S/{totalPrice.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-muted-foreground">
+                <span>Delivery</span>
+                <span>Por calcular</span>
+              </div>
+              <div className="border-t pt-3 flex justify-between items-center">
+                <span className="text-xl font-bold">Total</span>
+                <span className="text-xl font-bold text-primary">
+                  S/{totalPrice.toFixed(2)}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between items-center mb-6">
-              <span className="text-2xl font-bold">Total</span>
-              <span className="text-2xl font-bold text-primary">
-                S/{totalPrice.toFixed(2)}
-              </span>
-            </div>
-            <Button className="w-full h-12 text-base font-semibold">
-              Proceder al pago
+
+            <Button
+              onClick={handleCheckout}
+              className="w-full h-12 text-base font-semibold"
+            >
+              {isAuthenticated
+                ? "Proceder al pago"
+                : "Iniciar sesión para continuar"}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => navigate("/menu")}
+              className="w-full h-12 text-base mt-3"
+            >
+              Seguir comprando
             </Button>
           </div>
         </div>
