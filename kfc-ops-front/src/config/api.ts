@@ -6,9 +6,14 @@ export const API_CONFIG = {
 };
 
 export const ENDPOINTS = {
+  // Tenants
+  TENANTS: "/tenants",
+  TENANT: (tenantId: string) => `/tenants/${tenantId}`,
+
   // Auth
   LOGIN: "/auth/login",
   LOGOUT: "/auth/logout",
+  REGISTER: "/auth/register",
 
   // Dashboard
   DASHBOARD: `/tenants/${API_CONFIG.TENANT_ID}/dashboard`,

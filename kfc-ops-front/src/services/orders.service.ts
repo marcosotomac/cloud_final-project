@@ -67,27 +67,39 @@ class OrdersService {
 
   // Workflow Actions
   async takeOrder(orderId: string): Promise<ApiResponse<Order>> {
-    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_TAKE(orderId));
+    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_TAKE(orderId), {
+      staffName: "Ops",
+    });
   }
 
   async startCooking(orderId: string): Promise<ApiResponse<Order>> {
-    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_COOK(orderId));
+    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_COOK(orderId), {
+      staffName: "Ops",
+    });
   }
 
   async markCooked(orderId: string): Promise<ApiResponse<Order>> {
-    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_COOKED(orderId));
+    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_COOKED(orderId), {
+      staffName: "Ops",
+    });
   }
 
   async packOrder(orderId: string): Promise<ApiResponse<Order>> {
-    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_PACK(orderId));
+    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_PACK(orderId), {
+      staffName: "Ops",
+    });
   }
 
   async startDelivery(orderId: string): Promise<ApiResponse<Order>> {
-    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_DELIVER(orderId));
+    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_DELIVER(orderId), {
+      staffName: "Ops",
+    });
   }
 
   async completeOrder(orderId: string): Promise<ApiResponse<Order>> {
-    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_COMPLETE(orderId));
+    return apiClient.post<Order>(ENDPOINTS.WORKFLOW_COMPLETE(orderId), {
+      staffName: "Ops",
+    });
   }
 
   // Generic workflow action

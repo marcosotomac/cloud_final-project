@@ -27,7 +27,7 @@ def create_order_handler(event, context):
         body = json.loads(event.get('body', '{}'))
 
         # Validate required fields
-        required_fields = ['customerId', 'items']
+        required_fields = ['customerId', 'items', 'deliveryAddress']
         for field in required_fields:
             if not body.get(field):
                 return error_response(f'Missing required field: {field}')
@@ -40,20 +40,13 @@ def create_order_handler(event, context):
         order_id = str(ulid.new())
         now = datetime.utcnow().isoformat()
 
-        # Normalize order type
-        order_type = (body.get('orderType') or 'delivery').lower()
-
-        # Delivery address validation for delivery orders
-        if order_type == 'delivery' and not body.get('deliveryAddress'):
-            return error_response('Delivery address is required for delivery orders')
-
         # Calculate totals
         subtotal = sum(item.get('price', 0) * item.get('quantity', 1)
                        for item in body['items'])
         tax = subtotal * 0.18  # 18% IGV
-        default_delivery_fee = 0 if order_type != 'delivery' else 5.0
-        delivery_fee = body.get('deliveryFee', default_delivery_fee)
+        delivery_fee = body.get('deliveryFee', 5.0)
         total = subtotal + tax + delivery_fee
+        order_type = body.get('orderType', 'delivery')
 
         # Generate order number
         order_number = f"KFC-{datetime.utcnow().strftime('%Y%m%d')}-{order_id[:8].upper()}"
@@ -78,7 +71,7 @@ def create_order_handler(event, context):
             'tax': tax,
             'deliveryFee': delivery_fee,
             'total': total,
-            'deliveryAddress': body.get('deliveryAddress', {}),
+            'deliveryAddress': body['deliveryAddress'],
             'deliveryNotes': body.get('deliveryNotes', ''),
             'paymentMethod': body.get('paymentMethod', 'CASH'),
             'paymentStatus': 'pending',
@@ -219,9 +212,8 @@ def get_orders_by_status_handler(event, context):
             return error_response('Tenant ID and Status are required')
 
         # Validate status
-        normalized_status = status.replace('-', '_').upper()
         valid_statuses = [s.value for s in OrderStatus]
-        if normalized_status not in valid_statuses:
+        if status not in valid_statuses:
             return error_response(f'Invalid status. Valid values: {", ".join(valid_statuses)}')
 
         table = get_orders_table()
@@ -229,15 +221,14 @@ def get_orders_by_status_handler(event, context):
         # Query orders by status using GSI1
         orders = query_items(
             table,
-            Key('GSI1PK').eq(
-                f'TENANT#{tenant_id}#STATUS#{normalized_status}'),
+            Key('GSI1PK').eq(f'TENANT#{tenant_id}#STATUS#{status}'),
             index_name='GSI1',
             scan_forward=False
         )
 
         return success_response({
             'orders': orders,
-            'status': normalized_status,
+            'status': status,
             'count': len(orders)
         })
 
@@ -387,8 +378,7 @@ def update_order_status_handler(event, context):
 
         body = json.loads(event.get('body', '{}'))
 
-        new_status_raw = body.get('status')
-        new_status = new_status_raw.replace('-', '_').upper() if new_status_raw else None
+        new_status = body.get('status')
         if not new_status:
             return error_response('Status is required')
 

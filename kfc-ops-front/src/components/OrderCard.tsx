@@ -18,10 +18,8 @@ export interface Order {
 
 interface OrderCardProps {
   order: Order;
-  onStatusChange: (
-    orderId: string,
-    newStatus: Order["status"]
-  ) => void | Promise<void>;
+  onStatusChange: (orderId: string) => void | Promise<void>;
+  disabled?: boolean;
 }
 
 const statusConfig = {
@@ -43,11 +41,15 @@ const statusConfig = {
   delivery: {
     label: "En Delivery",
     color: "bg-green-500/20 text-green-700 dark:text-green-400",
-    next: null,
+    next: "delivery" as const, // reutilizamos para marcar completada
   },
 };
 
-export const OrderCard = ({ order, onStatusChange }: OrderCardProps) => {
+export const OrderCard = ({
+  order,
+  onStatusChange,
+  disabled = false,
+}: OrderCardProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const {
@@ -69,14 +71,17 @@ export const OrderCard = ({ order, onStatusChange }: OrderCardProps) => {
   const minutesAgo = Math.floor(
     (Date.now() - order.createdAt.getTime()) / 60000
   );
+  const normalizedApiStatus = (order.apiStatus || order.status).toLowerCase();
+  const isFinalStatus =
+    normalizedApiStatus === "completed" || normalizedApiStatus === "delivered";
 
   const handleNextStatus = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!config.next || isUpdating) return;
+    if (!config.next || isUpdating || isFinalStatus || disabled) return;
 
     setIsUpdating(true);
     try {
-      await onStatusChange(order.id, config.next);
+      await onStatusChange(order.id);
     } finally {
       setIsUpdating(false);
     }
@@ -133,11 +138,11 @@ export const OrderCard = ({ order, onStatusChange }: OrderCardProps) => {
             <Clock className="w-3 h-3 mr-1" />
             {minutesAgo} min
           </div>
-          {config.next && (
+          {config.next && !isFinalStatus && (
             <Button
               size="sm"
               onClick={handleNextStatus}
-              disabled={isUpdating}
+              disabled={isUpdating || disabled}
               className="text-xs"
             >
               {isUpdating ? (

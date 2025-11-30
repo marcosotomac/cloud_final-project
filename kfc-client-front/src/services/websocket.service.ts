@@ -50,18 +50,20 @@ class WebSocketService {
         this.ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            const eventType = data.type || data.action || "message";
+            const eventTypeRaw = data.type || data.action || "message";
+            const eventType = String(eventTypeRaw).toLowerCase();
+            const payload = data.payload ?? data;
 
             // Notify all handlers for this event type
             const handlers = this.handlers.get(eventType);
             if (handlers) {
-              handlers.forEach((handler) => handler(data));
+              handlers.forEach((handler) => handler(payload));
             }
 
             // Also notify 'all' handlers
             const allHandlers = this.handlers.get("all");
             if (allHandlers) {
-              allHandlers.forEach((handler) => handler(data));
+              allHandlers.forEach((handler) => handler(payload));
             }
           } catch (error) {
             console.error("Error parsing WebSocket message:", error);

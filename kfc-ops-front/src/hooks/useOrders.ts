@@ -67,9 +67,21 @@ export const useTakeOrder = () => {
       }
       throw new Error(response.error);
     },
-    onSuccess: () => {
+    onSuccess: (data, orderId) => {
+      const newStatus = data?.status || "RECEIVED";
+      queryClient.setQueryData(["orders", undefined], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((o) =>
+          (o.orderId || o.id) === orderId
+            ? { ...o, status: newStatus, apiStatus: newStatus }
+            : o
+        );
+      });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 };
@@ -85,9 +97,21 @@ export const useStartCooking = () => {
       }
       throw new Error(response.error);
     },
-    onSuccess: () => {
+    onSuccess: (data, orderId) => {
+      const newStatus = data?.status || "COOKING";
+      queryClient.setQueryData(["orders", undefined], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((o) =>
+          (o.orderId || o.id) === orderId
+            ? { ...o, status: newStatus, apiStatus: newStatus }
+            : o
+        );
+      });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 };
@@ -103,9 +127,21 @@ export const useMarkCooked = () => {
       }
       throw new Error(response.error);
     },
-    onSuccess: () => {
+    onSuccess: (data, orderId) => {
+      const newStatus = data?.status || "COOKED";
+      queryClient.setQueryData(["orders", undefined], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((o) =>
+          (o.orderId || o.id) === orderId
+            ? { ...o, status: newStatus, apiStatus: newStatus }
+            : o
+        );
+      });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 };
@@ -121,9 +157,21 @@ export const usePackOrder = () => {
       }
       throw new Error(response.error);
     },
-    onSuccess: () => {
+    onSuccess: (data, orderId) => {
+      const newStatus = data?.status || "PACKED";
+      queryClient.setQueryData(["orders", undefined], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((o) =>
+          (o.orderId || o.id) === orderId
+            ? { ...o, status: newStatus, apiStatus: newStatus }
+            : o
+        );
+      });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 };
@@ -139,9 +187,21 @@ export const useStartDelivery = () => {
       }
       throw new Error(response.error);
     },
-    onSuccess: () => {
+    onSuccess: (data, orderId) => {
+      const newStatus = data?.status || "DELIVERING";
+      queryClient.setQueryData(["orders", undefined], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((o) =>
+          (o.orderId || o.id) === orderId
+            ? { ...o, status: newStatus, apiStatus: newStatus }
+            : o
+        );
+      });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 };
@@ -157,9 +217,21 @@ export const useCompleteOrder = () => {
       }
       throw new Error(response.error);
     },
-    onSuccess: () => {
+    onSuccess: (data, orderId) => {
+      const newStatus = data?.status || "COMPLETED";
+      queryClient.setQueryData(["orders", undefined], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((o) =>
+          (o.orderId || o.id) === orderId
+            ? { ...o, status: newStatus, apiStatus: newStatus }
+            : o
+        );
+      });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 };

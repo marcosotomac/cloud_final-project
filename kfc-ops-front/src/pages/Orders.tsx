@@ -14,10 +14,13 @@ import {
   useOrders,
   useTakeOrder,
   useStartCooking,
+  useMarkCooked,
   usePackOrder,
   useStartDelivery,
   useCompleteOrder,
 } from "@/hooks/useOrders";
+import { useWebSocket, useOrderNotifications } from "@/hooks/useWebSocket";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 // Map API status to UI status
@@ -29,14 +32,15 @@ const mapApiStatusToUI = (apiStatus: string): UIStatus => {
     .replace(/\s+/g, "-");
   const statusMap: Record<string, UIStatus> = {
     pending: "pending",
-    confirmed: "pending",
-    received: "pending",
+    confirmed: "kitchen",
+    received: "kitchen",
     preparing: "kitchen",
     cooking: "kitchen",
     cooked: "packing",
     ready: "packing",
     packing: "packing",
     packed: "delivery",
+    "ready-for-delivery": "delivery",
     "out-for-delivery": "delivery",
     delivering: "delivery",
     delivered: "delivery",
@@ -59,6 +63,54 @@ interface UIOrder {
 const Orders = () => {
   const [filterStatus, setFilterStatus] = useState<UIStatus | "all">("all");
   const { addNotification } = useNotifications();
+  const queryClient = useQueryClient();
+
+  // Keep WebSocket connected and refresh caches on events
+  const { isConnected } = useWebSocket();
+
+  useOrderNotifications(
+    (newOrder) => {
+      // Upsert new order into cache to show instantly
+      queryClient.setQueryData(
+        ["orders", undefined],
+        (old: any[] | undefined) => {
+          const orders = old ? [...old] : [];
+          const id = (newOrder as any)?.orderId || (newOrder as any)?.id;
+          const existingIndex = orders.findIndex(
+            (o: any) => (o.orderId || o.id) === id
+          );
+          if (existingIndex >= 0) {
+            orders[existingIndex] = newOrder as any;
+          } else {
+            orders.unshift(newOrder as any);
+          }
+          return orders;
+        }
+      );
+      toast.success("Nuevo pedido recibido");
+    },
+    (updatedOrder) => {
+      queryClient.setQueryData(
+        ["orders", undefined],
+        (old: any[] | undefined) => {
+          const orders = old ? [...old] : [];
+          const id = (updatedOrder as any)?.orderId || (updatedOrder as any)?.id;
+          const existingIndex = orders.findIndex(
+            (o: any) => (o.orderId || o.id) === id
+          );
+          if (existingIndex >= 0) {
+            orders[existingIndex] = {
+              ...orders[existingIndex],
+              ...updatedOrder,
+            };
+          } else {
+            orders.unshift(updatedOrder as any);
+          }
+          return orders;
+        }
+      );
+    }
+  );
 
   // Fetch real orders from API
   const {
@@ -71,9 +123,17 @@ const Orders = () => {
   // Workflow mutations
   const takeOrder = useTakeOrder();
   const startCooking = useStartCooking();
+  const finishCooking = useMarkCooked();
   const packOrder = usePackOrder();
   const startDelivery = useStartDelivery();
   const completeOrder = useCompleteOrder();
+  const isMutating =
+    takeOrder.isPending ||
+    startCooking.isPending ||
+    finishCooking.isPending ||
+    packOrder.isPending ||
+    startDelivery.isPending ||
+    completeOrder.isPending;
 
   // Transform API orders to UI format
   const orders: UIOrder[] = useMemo(() => {
@@ -94,25 +154,36 @@ const Orders = () => {
     }));
   }, [apiOrders]);
 
-  const handleStatusChange = async (orderId: string, newStatus: UIStatus) => {
+  const handleStatusChange = async (orderId: string) => {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
 
     try {
-      // Determine which workflow action to call based on current and new status
-      if (order.status === "pending" && newStatus === "kitchen") {
-        // Take order and start cooking
+      const backendStatus = (order.apiStatus || order.status || "")
+        .toLowerCase()
+        .replace(/-/g, "_");
+
+      if (backendStatus === "pending") {
         await takeOrder.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} aceptada`);
+      } else if (backendStatus === "received" || backendStatus === "confirmed") {
         await startCooking.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} enviada a cocina`);
-      } else if (order.status === "kitchen" && newStatus === "packing") {
-        // Mark as ready for packing
-        await packOrder.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} en cocina`);
+      } else if (backendStatus === "cooking" || backendStatus === "preparing") {
+        await finishCooking.mutateAsync(orderId);
         toast.success(`Orden ${orderId} lista para empaque`);
-      } else if (order.status === "packing" && newStatus === "delivery") {
-        // Start delivery
+      } else if (backendStatus === "cooked" || backendStatus === "ready") {
+        await packOrder.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} empacada`);
+      } else if (backendStatus === "packed") {
         await startDelivery.mutateAsync(orderId);
         toast.success(`Orden ${orderId} en camino`);
+      } else if (
+        backendStatus === "delivering" ||
+        backendStatus === "out_for_delivery"
+      ) {
+        await completeOrder.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} completada`);
       }
 
       addNotification({
@@ -121,7 +192,13 @@ const Orders = () => {
         type: "order",
       });
     } catch (error: any) {
-      toast.error(error.message || "Error al actualizar orden");
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Error al actualizar orden"
+      );
+      // Re-sync from backend if something failed
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     }
   };
 
@@ -133,8 +210,7 @@ const Orders = () => {
     if (!activeOrder) return;
 
     // Determine the new status based on the drop zone
-    const newStatus = over.id as UIStatus;
-    handleStatusChange(activeOrder.id, newStatus);
+    handleStatusChange(activeOrder.id);
   };
 
   const filteredOrders = orders.filter(
@@ -167,6 +243,9 @@ const Orders = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Badge variant={isConnected ? "default" : "secondary"}>
+            {isConnected ? "WS Conectado" : "Reconectando WS..."}
+          </Badge>
           <Button
             variant="outline"
             size="icon"
@@ -254,6 +333,7 @@ const Orders = () => {
                       key={order.id}
                       order={order}
                       onStatusChange={handleStatusChange}
+                      disabled={isMutating}
                     />
                   ))}
                 </SortableContext>
@@ -273,6 +353,7 @@ const Orders = () => {
                           key={order.id}
                           order={order}
                           onStatusChange={handleStatusChange}
+                          disabled={isMutating}
                         />
                       ))}
                     </SortableContext>

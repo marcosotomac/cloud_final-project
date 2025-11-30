@@ -7,6 +7,7 @@ interface WebSocketMessage {
   action: string;
   type?: string;
   data?: unknown;
+  payload?: unknown;
 }
 
 class WebSocketService {
@@ -72,32 +73,33 @@ class WebSocketService {
   }
 
   private handleMessage(message: WebSocketMessage): void {
-    const { type, action, data } = message;
-    const eventType = type || action;
+    const { type, action } = message;
+    const payload = message.payload ?? message.data;
+    const eventType = (type || action || "").toLowerCase();
 
     if (eventType) {
-      this.emit(eventType, data);
+      this.emit(eventType, payload);
     }
 
     // Handle specific message types for operations
     switch (eventType) {
       case "new_order":
-        this.emit("orderReceived", data as Order);
+        this.emit("orderReceived", (payload as any)?.order || payload || (message.data as Order));
         break;
       case "order_update":
-        this.emit("orderUpdated", data as Order);
+        this.emit("orderUpdated", (payload as any)?.order || payload || (message.data as Order));
         break;
       case "order_cancelled":
-        this.emit("orderCancelled", data);
+        this.emit("orderCancelled", payload);
         break;
       case "inventory_alert":
-        this.emit("inventoryAlert", data);
+        this.emit("inventoryAlert", payload);
         break;
       case "staff_update":
-        this.emit("staffUpdate", data);
+        this.emit("staffUpdate", payload);
         break;
       case "kitchen_update":
-        this.emit("kitchenUpdate", data);
+        this.emit("kitchenUpdate", payload);
         break;
     }
   }

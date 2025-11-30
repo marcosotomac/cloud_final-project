@@ -10,7 +10,6 @@ from src.utils.response import (
     success_response, created_response, error_response, not_found_response
 )
 from src.utils.dynamodb import get_users_table, get_orders_table, put_item, get_item, query_items, update_item
-from src.models.order_status import OrderStatus
 
 
 def get_customer_profile_handler(event, context):
@@ -469,46 +468,25 @@ def reorder_handler(event, context):
         # Create new order with same items
         new_order_id = str(ulid.new())
         now = datetime.utcnow().isoformat()
-        order_type = (original_order.get('orderType') or 'delivery').lower()
-        default_delivery_fee = 0 if order_type != 'delivery' else 5.0
 
         new_order = {
             'PK': f'TENANT#{tenant_id}',
             'SK': f'ORDER#{new_order_id}',
-            'GSI1PK': f'TENANT#{tenant_id}#STATUS#{OrderStatus.PENDING.value}',
-            'GSI1SK': now,
-            'GSI2PK': f'TENANT#{tenant_id}#CUSTOMER#{original_order.get("customerId")}',
-            'GSI2SK': now,
+            'GSI1PK': f'TENANT#{tenant_id}',
+            'GSI1SK': f'STATUS#PENDING#{now}',
             'orderId': new_order_id,
             'tenantId': tenant_id,
             'customerId': original_order.get('customerId'),
             'customerName': original_order.get('customerName'),
             'customerPhone': original_order.get('customerPhone'),
-            'customerEmail': original_order.get('customerEmail', ''),
             'items': original_order.get('items', []),
             'subtotal': original_order.get('subtotal'),
             'tax': original_order.get('tax'),
-            'deliveryFee': original_order.get('deliveryFee', default_delivery_fee),
+            'deliveryFee': original_order.get('deliveryFee'),
             'total': original_order.get('total'),
-            'deliveryAddress': original_order.get('deliveryAddress', {}),
-            'deliveryNotes': original_order.get('deliveryNotes', ''),
-            'orderType': order_type,
-            'orderNumber': f"KFC-{datetime.utcnow().strftime('%Y%m%d')}-{new_order_id[:8].upper()}",
-            'paymentMethod': original_order.get('paymentMethod', 'CASH'),
-            'paymentStatus': 'pending',
-            'status': OrderStatus.PENDING.value,
-            'statusHistory': [
-                {
-                    'status': OrderStatus.PENDING.value,
-                    'timestamp': now,
-                    'message': 'Pedido recreado desde historial'
-                }
-            ],
-            'workflow': {
-                'currentStep': 'PENDING',
-                'steps': [],
-                'assignedStaff': {}
-            },
+            'deliveryAddress': original_order.get('deliveryAddress'),
+            'orderType': original_order.get('orderType'),
+            'status': 'PENDING',
             'reorderedFrom': order_id,
             'createdAt': now,
             'updatedAt': now
