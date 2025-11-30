@@ -38,7 +38,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (data: LoginData) => {
     const response = await authService.login(data);
     if (response.success && response.data) {
-      setUser(response.data.user);
+      const userData: User = {
+        userId: response.data.userId,
+        email: response.data.email,
+        name: response.data.name,
+        role: response.data.role as User["role"],
+        tenantId: response.data.tenantId,
+      };
+      setUser(userData);
       return { success: true };
     }
     return { success: false, error: response.error };

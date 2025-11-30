@@ -1,5 +1,5 @@
 import apiClient, { User, ApiResponse } from "./api";
-import { ENDPOINTS } from "@/config/api";
+import { API_CONFIG, ENDPOINTS } from "@/config/api";
 
 export interface LoginData {
   email: string;
@@ -7,18 +7,36 @@ export interface LoginData {
   locationId?: string;
 }
 
+// Backend returns user data + token in the same object
 interface AuthResponse {
   token: string;
-  user: User;
+  userId: string;
+  email: string;
+  name: string;
+  phone?: string;
+  role: string;
+  tenantId: string;
 }
 
 class AuthService {
+  private tenantId = API_CONFIG.TENANT_ID;
+
   async login(data: LoginData): Promise<ApiResponse<AuthResponse>> {
-    const response = await apiClient.post<AuthResponse>(ENDPOINTS.LOGIN, data);
+    const response = await apiClient.post<AuthResponse>(ENDPOINTS.LOGIN, {
+      ...data,
+      tenantId: this.tenantId,
+    });
 
     if (response.success && response.data) {
       apiClient.setToken(response.data.token);
-      localStorage.setItem("ops_user", JSON.stringify(response.data.user));
+      const user: User = {
+        userId: response.data.userId,
+        email: response.data.email,
+        name: response.data.name,
+        role: response.data.role as User["role"],
+        tenantId: response.data.tenantId,
+      };
+      localStorage.setItem("ops_user", JSON.stringify(user));
     }
 
     return response;

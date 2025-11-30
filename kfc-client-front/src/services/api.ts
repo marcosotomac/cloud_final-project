@@ -17,9 +17,15 @@ export interface User {
   tenantId: string;
 }
 
+// Backend returns user data + token in the same object
 export interface AuthResponse {
   token: string;
-  user: User;
+  userId: string;
+  email: string;
+  name: string;
+  phone?: string;
+  role: string;
+  tenantId: string;
 }
 
 export interface MenuItem {

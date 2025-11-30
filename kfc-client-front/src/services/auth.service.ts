@@ -1,5 +1,5 @@
 import apiClient, { ApiResponse, AuthResponse, User } from "./api";
-import { ENDPOINTS } from "@/config/api";
+import { API_CONFIG, ENDPOINTS } from "@/config/api";
 
 export interface RegisterData {
   email: string;
@@ -14,26 +14,44 @@ export interface LoginData {
 }
 
 class AuthService {
+  private tenantId = API_CONFIG.TENANT_ID;
+
   async register(data: RegisterData): Promise<ApiResponse<AuthResponse>> {
     const response = await apiClient.post<AuthResponse>(
       ENDPOINTS.AUTH.REGISTER,
-      data
+      { ...data, tenantId: this.tenantId }
     );
     if (response.success && response.data?.token) {
       apiClient.setToken(response.data.token);
-      localStorage.setItem("kfc_user", JSON.stringify(response.data.user));
+      const user: User = {
+        userId: response.data.userId,
+        email: response.data.email,
+        name: response.data.name,
+        phone: response.data.phone,
+        role: response.data.role,
+        tenantId: response.data.tenantId,
+      };
+      localStorage.setItem("kfc_user", JSON.stringify(user));
     }
     return response;
   }
 
   async login(data: LoginData): Promise<ApiResponse<AuthResponse>> {
-    const response = await apiClient.post<AuthResponse>(
-      ENDPOINTS.AUTH.LOGIN,
-      data
-    );
+    const response = await apiClient.post<AuthResponse>(ENDPOINTS.AUTH.LOGIN, {
+      ...data,
+      tenantId: this.tenantId,
+    });
     if (response.success && response.data?.token) {
       apiClient.setToken(response.data.token);
-      localStorage.setItem("kfc_user", JSON.stringify(response.data.user));
+      const user: User = {
+        userId: response.data.userId,
+        email: response.data.email,
+        name: response.data.name,
+        phone: response.data.phone,
+        role: response.data.role,
+        tenantId: response.data.tenantId,
+      };
+      localStorage.setItem("kfc_user", JSON.stringify(user));
     }
     return response;
   }
