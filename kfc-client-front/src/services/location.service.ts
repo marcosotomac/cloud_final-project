@@ -3,9 +3,15 @@ import { API_CONFIG, ENDPOINTS } from "@/config/api";
 
 export interface DeliveryCheck {
   available: boolean;
+  covered: boolean;
   estimatedTime?: number;
   deliveryFee?: number;
   message?: string;
+  nearestLocation?: {
+    locationId: string;
+    name: string;
+    distance?: number;
+  };
 }
 
 class LocationService {

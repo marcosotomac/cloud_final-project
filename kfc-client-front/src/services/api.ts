@@ -100,6 +100,8 @@ export interface Address {
   country?: string;
   isDefault?: boolean;
   label?: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface Location {

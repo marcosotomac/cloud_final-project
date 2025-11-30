@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { MapPin, Store, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { MapPin, Store, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,12 +29,13 @@ const LocationModal = ({ isOpen, onClose, onConfirm }: LocationModalProps) => {
     lng: number;
   } | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
+  const [autoDetected, setAutoDetected] = useState(false);
 
   const { data: locations, isLoading: loadingStores } = useLocations();
   const { data: coverageData, isLoading: checkingCoverage } =
     useDeliveryCoverage(userCoords?.lat || 0, userCoords?.lng || 0);
 
-  const handleGetCurrentLocation = () => {
+  const handleGetCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
       toast.error("Tu navegador no soporta geolocalización");
       return;
@@ -46,13 +47,34 @@ const LocationModal = ({ isOpen, onClose, onConfirm }: LocationModalProps) => {
         const { latitude, longitude } = position.coords;
         setUserCoords({ lat: latitude, lng: longitude });
 
-        // Reverse geocoding (simplified - in production use a proper geocoding API)
+        // Reverse geocoding usando OpenStreetMap Nominatim
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
           );
           const data = await response.json();
-          setAddress(data.display_name || `${latitude}, ${longitude}`);
+
+          // Construir una dirección más legible
+          const addr = data.address;
+          let formattedAddress = "";
+
+          if (addr) {
+            const parts = [];
+            if (addr.road) parts.push(addr.road);
+            if (addr.house_number)
+              parts[0] = `${addr.road} ${addr.house_number}`;
+            if (addr.suburb || addr.neighbourhood)
+              parts.push(addr.suburb || addr.neighbourhood);
+            if (addr.city || addr.town || addr.village)
+              parts.push(addr.city || addr.town || addr.village);
+            if (addr.state) parts.push(addr.state);
+            formattedAddress = parts.join(", ");
+          }
+
+          setAddress(
+            formattedAddress || data.display_name || `${latitude}, ${longitude}`
+          );
+          setAutoDetected(true);
         } catch {
           setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
         }
@@ -60,11 +82,31 @@ const LocationModal = ({ isOpen, onClose, onConfirm }: LocationModalProps) => {
       },
       (error) => {
         console.error("Geolocation error:", error);
-        toast.error("No pudimos obtener tu ubicación");
+        if (error.code === error.PERMISSION_DENIED) {
+          toast.error(
+            "Permiso de ubicación denegado. Puedes ingresar tu dirección manualmente."
+          );
+        } else {
+          toast.error(
+            "No pudimos obtener tu ubicación. Ingresa tu dirección manualmente."
+          );
+        }
         setLoadingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000, // 5 minutos de cache
       }
     );
-  };
+  }, []);
+
+  // Detectar ubicación automáticamente al abrir el modal
+  useEffect(() => {
+    if (isOpen && !userCoords && !loadingLocation && !address) {
+      handleGetCurrentLocation();
+    }
+  }, [isOpen, userCoords, loadingLocation, address, handleGetCurrentLocation]);
 
   const handleConfirmDelivery = () => {
     if (!address.trim()) {
@@ -93,7 +135,11 @@ const LocationModal = ({ isOpen, onClose, onConfirm }: LocationModalProps) => {
 
     const store = locations?.find((l: any) => l.locationId === selectedStore);
     if (store) {
-      onConfirm(store.address, store.locationId);
+      const storeAddress =
+        typeof store.address === "string"
+          ? store.address
+          : store.address.street;
+      onConfirm(storeAddress, store.locationId);
       onClose();
     }
   };
@@ -123,23 +169,39 @@ const LocationModal = ({ isOpen, onClose, onConfirm }: LocationModalProps) => {
             <TabsContent value="delivery" className="space-y-6">
               {/* Map/Location Section */}
               <div className="relative w-full h-48 bg-muted rounded-lg overflow-hidden flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                  <Button
-                    variant="default"
-                    onClick={handleGetCurrentLocation}
-                    disabled={loadingLocation}
-                  >
-                    {loadingLocation ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Obteniendo ubicación...
-                      </>
-                    ) : (
-                      "Usar mi ubicación actual"
-                    )}
-                  </Button>
-                </div>
+                {loadingLocation ? (
+                  <div className="text-center">
+                    <Loader2 className="h-12 w-12 mx-auto mb-2 text-primary animate-spin" />
+                    <p className="text-sm text-muted-foreground">
+                      Detectando tu ubicación...
+                    </p>
+                  </div>
+                ) : userCoords ? (
+                  <div className="text-center">
+                    <MapPin className="h-12 w-12 mx-auto mb-2 text-primary" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Ubicación detectada
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGetCurrentLocation}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Actualizar ubicación
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <MapPin className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
+                    <Button
+                      variant="default"
+                      onClick={handleGetCurrentLocation}
+                    >
+                      Detectar mi ubicación
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Coverage status */}
