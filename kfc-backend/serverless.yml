@@ -13,13 +13,13 @@ provider:
   runtime: python3.11
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
-  
+
   # ============================================
   # IAM - Usar LabRole existente de AWS Academy
   # ============================================
   iam:
     role: arn:aws:iam::595645243021:role/LabRole
-  
+
   # ============================================
   # Variables de entorno para todas las funciones
   # ============================================
@@ -53,6 +53,18 @@ custom:
     noDeploy:
       - boto3
       - botocore
+  
+  # CORS configuration for all HTTP endpoints
+  corsConfig:
+    origin: '*'
+    headers:
+      - Content-Type
+      - X-Amz-Date
+      - Authorization
+      - X-Api-Key
+      - X-Amz-Security-Token
+      - X-Tenant-Id
+    allowCredentials: false
 
 # ============================================
 # Package configuration
@@ -104,7 +116,7 @@ functions:
       - http:
           path: /auth/register
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   login:
     handler: src/handlers/auth.login_handler
@@ -112,7 +124,7 @@ functions:
       - http:
           path: /auth/login
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== TENANT HANDLERS ====================
   createTenant:
@@ -121,7 +133,7 @@ functions:
       - http:
           path: /tenants
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getTenants:
     handler: src/handlers/tenants.get_tenants_handler
@@ -129,7 +141,7 @@ functions:
       - http:
           path: /tenants
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getTenant:
     handler: src/handlers/tenants.get_tenant_handler
@@ -137,7 +149,7 @@ functions:
       - http:
           path: /tenants/{tenantId}
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== MENU HANDLERS ====================
   createMenuItem:
@@ -146,7 +158,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/menu
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getMenu:
     handler: src/handlers/menu.get_menu_handler
@@ -154,7 +166,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/menu
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   updateMenuItem:
     handler: src/handlers/menu.update_menu_item_handler
@@ -162,7 +174,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/menu/{itemId}
           method: put
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   deleteMenuItem:
     handler: src/handlers/menu.delete_menu_item_handler
@@ -170,7 +182,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/menu/{itemId}
           method: delete
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== ORDER HANDLERS ====================
   createOrder:
@@ -179,7 +191,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getOrders:
     handler: src/handlers/orders.get_orders_handler
@@ -187,7 +199,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getOrder:
     handler: src/handlers/orders.get_order_handler
@@ -195,7 +207,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getOrdersByStatus:
     handler: src/handlers/orders.get_orders_by_status_handler
@@ -203,7 +215,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/status/{status}
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   cancelOrder:
     handler: src/handlers/orders.cancel_order_handler
@@ -211,7 +223,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/cancel
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   updateOrder:
     handler: src/handlers/orders.update_order_handler
@@ -219,7 +231,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}
           method: put
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== WORKFLOW HANDLERS ====================
   takeOrder:
@@ -228,7 +240,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/take
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   startCooking:
     handler: src/handlers/workflow.start_cooking_handler
@@ -236,7 +248,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/cook
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   finishCooking:
     handler: src/handlers/workflow.finish_cooking_handler
@@ -244,7 +256,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/cooked
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   packOrder:
     handler: src/handlers/workflow.pack_order_handler
@@ -252,7 +264,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/pack
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   startDelivery:
     handler: src/handlers/workflow.start_delivery_handler
@@ -260,7 +272,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/deliver
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   completeDelivery:
     handler: src/handlers/workflow.complete_delivery_handler
@@ -268,7 +280,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/complete
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== DASHBOARD HANDLERS ====================
   getDashboard:
@@ -277,7 +289,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/dashboard
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getWorkflowStats:
     handler: src/handlers/dashboard.get_workflow_stats_handler
@@ -285,7 +297,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/dashboard/workflow-stats
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== STAFF HANDLERS ====================
   getStaff:
@@ -294,7 +306,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/staff
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   createStaff:
     handler: src/handlers/staff.create_staff_handler
@@ -302,7 +314,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/staff
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   updateStaff:
     handler: src/handlers/staff.update_staff_handler
@@ -310,7 +322,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/staff/{staffId}
           method: put
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getStaffMember:
     handler: src/handlers/staff.get_staff_member_handler
@@ -318,7 +330,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/staff/{staffId}
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== INVENTORY HANDLERS ====================
   getInventory:
@@ -327,7 +339,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/inventory
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   createInventoryItem:
     handler: src/handlers/inventory.create_inventory_item_handler
@@ -335,7 +347,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/inventory
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   updateInventoryItem:
     handler: src/handlers/inventory.update_inventory_item_handler
@@ -343,7 +355,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/inventory/{itemId}
           method: put
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   adjustInventory:
     handler: src/handlers/inventory.adjust_inventory_handler
@@ -351,7 +363,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/inventory/{itemId}/adjust
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getLowStockAlerts:
     handler: src/handlers/inventory.get_low_stock_alerts_handler
@@ -359,7 +371,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/inventory/alerts/low-stock
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== PROMOTIONS HANDLERS ====================
   getPromotions:
@@ -368,7 +380,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/promotions
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   createPromotion:
     handler: src/handlers/promotions.create_promotion_handler
@@ -376,7 +388,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/promotions
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   validatePromoCode:
     handler: src/handlers/promotions.validate_promo_code_handler
@@ -384,7 +396,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/promotions/validate
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   applyPromotion:
     handler: src/handlers/promotions.apply_promotion_handler
@@ -392,7 +404,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/promotions/apply
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getActivePromotions:
     handler: src/handlers/promotions.get_active_promotions_handler
@@ -400,7 +412,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/promotions/active
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== CUSTOMERS HANDLERS ====================
   getCustomerProfile:
@@ -409,7 +421,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/customers/{customerId}/profile
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   updateCustomerProfile:
     handler: src/handlers/customers.update_customer_profile_handler
@@ -417,7 +429,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/customers/{customerId}/profile
           method: put
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getCustomerFavorites:
     handler: src/handlers/customers.get_favorites_handler
@@ -425,7 +437,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/customers/{customerId}/favorites
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   addCustomerFavorite:
     handler: src/handlers/customers.add_favorite_handler
@@ -433,7 +445,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/customers/{customerId}/favorites
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getCustomerAddresses:
     handler: src/handlers/customers.get_addresses_handler
@@ -441,7 +453,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/customers/{customerId}/addresses
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   addCustomerAddress:
     handler: src/handlers/customers.add_address_handler
@@ -449,7 +461,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/customers/{customerId}/addresses
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   trackOrder:
     handler: src/handlers/customers.track_order_handler
@@ -457,7 +469,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/track
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   reorder:
     handler: src/handlers/customers.reorder_handler
@@ -465,7 +477,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/reorder
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== REPORTS HANDLERS ====================
   getSalesReport:
@@ -474,7 +486,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/reports/sales
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getOrdersReport:
     handler: src/handlers/reports.get_orders_report_handler
@@ -482,7 +494,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/reports/orders
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getDailyReport:
     handler: src/handlers/reports.get_daily_report_handler
@@ -490,7 +502,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/reports/daily
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== RATINGS HANDLERS ====================
   createOrderRating:
@@ -499,7 +511,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/rating
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getOrderRating:
     handler: src/handlers/ratings.get_order_rating_handler
@@ -507,7 +519,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/rating
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getTenantRatings:
     handler: src/handlers/ratings.get_tenant_ratings_handler
@@ -515,7 +527,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/ratings
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   createMenuItemReview:
     handler: src/handlers/ratings.create_menu_item_review_handler
@@ -523,7 +535,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/menu/{itemId}/reviews
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getMenuItemReviews:
     handler: src/handlers/ratings.get_menu_item_reviews_handler
@@ -531,7 +543,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/menu/{itemId}/reviews
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== LOCATIONS HANDLERS ====================
   createLocation:
@@ -540,7 +552,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/locations
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getLocations:
     handler: src/handlers/locations.get_locations_handler
@@ -548,7 +560,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/locations
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getLocation:
     handler: src/handlers/locations.get_location_handler
@@ -556,7 +568,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/locations/{locationId}
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   findNearbyLocations:
     handler: src/handlers/locations.find_nearby_locations_handler
@@ -564,7 +576,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/locations/nearby
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   checkDeliveryAvailability:
     handler: src/handlers/locations.check_delivery_availability_handler
@@ -572,7 +584,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/locations/check-delivery
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== PAYMENTS HANDLERS ====================
   processPayment:
@@ -581,7 +593,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/payment
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   verifyPayment:
     handler: src/handlers/payments.verify_payment_handler
@@ -589,7 +601,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/payments/{paymentId}/verify
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getOrderPayments:
     handler: src/handlers/payments.get_order_payments_handler
@@ -597,7 +609,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/payments
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   processRefund:
     handler: src/handlers/payments.process_refund_handler
@@ -605,7 +617,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/orders/{orderId}/refund
           method: post
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getPaymentMethods:
     handler: src/handlers/payments.get_payment_methods_handler
@@ -613,7 +625,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/payment-methods
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   getDailyRevenue:
     handler: src/handlers/payments.get_daily_revenue_handler
@@ -621,7 +633,7 @@ functions:
       - http:
           path: /tenants/{tenantId}/payments/daily-revenue
           method: get
-          cors: true
+          cors: ${self:custom.corsConfig}
 
   # ==================== SQS EVENT HANDLERS ====================
   processOrderQueue:

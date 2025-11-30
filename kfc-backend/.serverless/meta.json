@@ -1,0 +1,1372 @@
+{
+  "/Users/marcosotomaceda/Desktop/ProyectoFinalCloud/kfc-backend/serverless.yml": {
+    "versionFramework": "4.25.0",
+    "servicePath": "/Users/marcosotomaceda/Desktop/ProyectoFinalCloud/kfc-backend/serverless.yml",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "service": "kfc-core",
+      "provider": {
+        "name": "aws",
+        "runtime": "python3.11",
+        "stage": "dev",
+        "region": "us-east-1",
+        "iam": {
+          "role": "arn:aws:iam::595645243021:role/LabRole"
+        },
+        "environment": {
+          "STAGE": "${self:provider.stage}",
+          "REGION": "${self:provider.region}",
+          "ORDERS_TABLE": "kfc-orders-${self:provider.stage}",
+          "CONNECTIONS_TABLE": "kfc-connections-${self:provider.stage}",
+          "TENANTS_TABLE": "kfc-tenants-${self:provider.stage}",
+          "MENU_TABLE": "kfc-menu-${self:provider.stage}",
+          "USERS_TABLE": "kfc-users-${self:provider.stage}",
+          "INVENTORY_TABLE": "kfc-inventory-${self:provider.stage}",
+          "PROMOTIONS_TABLE": "kfc-promotions-${self:provider.stage}",
+          "CUSTOMERS_TABLE": "kfc-customers-${self:provider.stage}",
+          "ORDER_EVENTS_BUS": "kfc-events-${self:provider.stage}",
+          "ORDERS_QUEUE_URL": {
+            "Ref": "OrdersQueue"
+          },
+          "NOTIFICATIONS_TOPIC_ARN": {
+            "Ref": "NotificationsTopic"
+          }
+        }
+      },
+      "custom": {
+        "pythonRequirements": {
+          "dockerizePip": false,
+          "slim": true,
+          "noDeploy": [
+            "boto3",
+            "botocore"
+          ]
+        },
+        "corsConfig": {
+          "origin": "*",
+          "headers": [
+            "Content-Type",
+            "X-Amz-Date",
+            "Authorization",
+            "X-Api-Key",
+            "X-Amz-Security-Token",
+            "X-Tenant-Id"
+          ],
+          "allowCredentials": "<REDACTED>"
+        }
+      },
+      "package": {
+        "individually": false,
+        "patterns": [
+          "!node_modules/**",
+          "!.git/**",
+          "!.venv/**",
+          "!__pycache__/**",
+          "!*.md",
+          "!tests/**",
+          "src/**"
+        ]
+      },
+      "functions": {
+        "wsConnect": {
+          "handler": "src/handlers/websocket.connect_handler",
+          "events": [
+            {
+              "websocket": {
+                "route": "$connect"
+              }
+            }
+          ]
+        },
+        "wsDisconnect": {
+          "handler": "src/handlers/websocket.disconnect_handler",
+          "events": [
+            {
+              "websocket": {
+                "route": "$disconnect"
+              }
+            }
+          ]
+        },
+        "wsDefault": {
+          "handler": "src/handlers/websocket.default_handler",
+          "events": [
+            {
+              "websocket": {
+                "route": "$default"
+              }
+            }
+          ]
+        },
+        "wsSubscribe": {
+          "handler": "src/handlers/websocket.subscribe_handler",
+          "events": [
+            {
+              "websocket": {
+                "route": "subscribe"
+              }
+            }
+          ]
+        },
+        "register": {
+          "handler": "src/handlers/auth.register_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/auth/register",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "login": {
+          "handler": "src/handlers/auth.login_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/auth/login",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "createTenant": {
+          "handler": "src/handlers/tenants.create_tenant_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getTenants": {
+          "handler": "src/handlers/tenants.get_tenants_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getTenant": {
+          "handler": "src/handlers/tenants.get_tenant_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "createMenuItem": {
+          "handler": "src/handlers/menu.create_menu_item_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/menu",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getMenu": {
+          "handler": "src/handlers/menu.get_menu_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/menu",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "updateMenuItem": {
+          "handler": "src/handlers/menu.update_menu_item_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/menu/{itemId}",
+                "method": "put",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "deleteMenuItem": {
+          "handler": "src/handlers/menu.delete_menu_item_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/menu/{itemId}",
+                "method": "delete",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "createOrder": {
+          "handler": "src/handlers/orders.create_order_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getOrders": {
+          "handler": "src/handlers/orders.get_orders_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getOrder": {
+          "handler": "src/handlers/orders.get_order_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getOrdersByStatus": {
+          "handler": "src/handlers/orders.get_orders_by_status_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/status/{status}",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "cancelOrder": {
+          "handler": "src/handlers/orders.cancel_order_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/cancel",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "updateOrder": {
+          "handler": "src/handlers/orders.update_order_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}",
+                "method": "put",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "takeOrder": {
+          "handler": "src/handlers/workflow.take_order_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/workflow/take",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "startCooking": {
+          "handler": "src/handlers/workflow.start_cooking_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/workflow/cook",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "finishCooking": {
+          "handler": "src/handlers/workflow.finish_cooking_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/workflow/cooked",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "packOrder": {
+          "handler": "src/handlers/workflow.pack_order_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/workflow/pack",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "startDelivery": {
+          "handler": "src/handlers/workflow.start_delivery_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/workflow/deliver",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "completeDelivery": {
+          "handler": "src/handlers/workflow.complete_delivery_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/workflow/complete",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getDashboard": {
+          "handler": "src/handlers/dashboard.get_dashboard_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/dashboard",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getWorkflowStats": {
+          "handler": "src/handlers/dashboard.get_workflow_stats_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/dashboard/workflow-stats",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getStaff": {
+          "handler": "src/handlers/staff.get_staff_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/staff",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "createStaff": {
+          "handler": "src/handlers/staff.create_staff_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/staff",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "updateStaff": {
+          "handler": "src/handlers/staff.update_staff_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/staff/{staffId}",
+                "method": "put",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getStaffMember": {
+          "handler": "src/handlers/staff.get_staff_member_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/staff/{staffId}",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getInventory": {
+          "handler": "src/handlers/inventory.get_inventory_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/inventory",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "createInventoryItem": {
+          "handler": "src/handlers/inventory.create_inventory_item_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/inventory",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "updateInventoryItem": {
+          "handler": "src/handlers/inventory.update_inventory_item_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/inventory/{itemId}",
+                "method": "put",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "adjustInventory": {
+          "handler": "src/handlers/inventory.adjust_inventory_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/inventory/{itemId}/adjust",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getLowStockAlerts": {
+          "handler": "src/handlers/inventory.get_low_stock_alerts_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/inventory/alerts/low-stock",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getPromotions": {
+          "handler": "src/handlers/promotions.get_promotions_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/promotions",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "createPromotion": {
+          "handler": "src/handlers/promotions.create_promotion_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/promotions",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "validatePromoCode": {
+          "handler": "src/handlers/promotions.validate_promo_code_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/promotions/validate",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "applyPromotion": {
+          "handler": "src/handlers/promotions.apply_promotion_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/promotions/apply",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getActivePromotions": {
+          "handler": "src/handlers/promotions.get_active_promotions_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/promotions/active",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getCustomerProfile": {
+          "handler": "src/handlers/customers.get_customer_profile_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/customers/{customerId}/profile",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "updateCustomerProfile": {
+          "handler": "src/handlers/customers.update_customer_profile_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/customers/{customerId}/profile",
+                "method": "put",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getCustomerFavorites": {
+          "handler": "src/handlers/customers.get_favorites_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/customers/{customerId}/favorites",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "addCustomerFavorite": {
+          "handler": "src/handlers/customers.add_favorite_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/customers/{customerId}/favorites",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getCustomerAddresses": {
+          "handler": "src/handlers/customers.get_addresses_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/customers/{customerId}/addresses",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "addCustomerAddress": {
+          "handler": "src/handlers/customers.add_address_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/customers/{customerId}/addresses",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "trackOrder": {
+          "handler": "src/handlers/customers.track_order_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/track",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "reorder": {
+          "handler": "src/handlers/customers.reorder_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/reorder",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getSalesReport": {
+          "handler": "src/handlers/reports.get_sales_report_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/reports/sales",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getOrdersReport": {
+          "handler": "src/handlers/reports.get_orders_report_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/reports/orders",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getDailyReport": {
+          "handler": "src/handlers/reports.get_daily_report_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/reports/daily",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "createOrderRating": {
+          "handler": "src/handlers/ratings.create_order_rating_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/rating",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getOrderRating": {
+          "handler": "src/handlers/ratings.get_order_rating_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/rating",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getTenantRatings": {
+          "handler": "src/handlers/ratings.get_tenant_ratings_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/ratings",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "createMenuItemReview": {
+          "handler": "src/handlers/ratings.create_menu_item_review_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/menu/{itemId}/reviews",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getMenuItemReviews": {
+          "handler": "src/handlers/ratings.get_menu_item_reviews_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/menu/{itemId}/reviews",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "createLocation": {
+          "handler": "src/handlers/locations.create_location_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/locations",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getLocations": {
+          "handler": "src/handlers/locations.get_locations_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/locations",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getLocation": {
+          "handler": "src/handlers/locations.get_location_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/locations/{locationId}",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "findNearbyLocations": {
+          "handler": "src/handlers/locations.find_nearby_locations_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/locations/nearby",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "checkDeliveryAvailability": {
+          "handler": "src/handlers/locations.check_delivery_availability_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/locations/check-delivery",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "processPayment": {
+          "handler": "src/handlers/payments.process_payment_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/payment",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "verifyPayment": {
+          "handler": "src/handlers/payments.verify_payment_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/payments/{paymentId}/verify",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getOrderPayments": {
+          "handler": "src/handlers/payments.get_order_payments_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/payments",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "processRefund": {
+          "handler": "src/handlers/payments.process_refund_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/orders/{orderId}/refund",
+                "method": "post",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getPaymentMethods": {
+          "handler": "src/handlers/payments.get_payment_methods_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/payment-methods",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "getDailyRevenue": {
+          "handler": "src/handlers/payments.get_daily_revenue_handler",
+          "events": [
+            {
+              "http": {
+                "path": "/tenants/{tenantId}/payments/daily-revenue",
+                "method": "get",
+                "cors": "${self:custom.corsConfig}"
+              }
+            }
+          ]
+        },
+        "processOrderQueue": {
+          "handler": "src/handlers/queue.process_order_queue_handler",
+          "events": [
+            {
+              "sqs": {
+                "arn": {
+                  "Fn::GetAtt": [
+                    "OrdersQueue",
+                    "Arn"
+                  ]
+                },
+                "batchSize": 1
+              }
+            }
+          ]
+        },
+        "processDLQ": {
+          "handler": "src/handlers/queue.process_dlq_handler",
+          "events": [
+            {
+              "sqs": {
+                "arn": {
+                  "Fn::GetAtt": [
+                    "OrdersDeadLetterQueue",
+                    "Arn"
+                  ]
+                },
+                "batchSize": 1
+              }
+            }
+          ]
+        },
+        "orderEventHandler": {
+          "handler": "src/handlers/events.order_events_handler",
+          "events": [
+            {
+              "eventBridge": {
+                "eventBus": {
+                  "Ref": "OrderEventBus"
+                },
+                "pattern": {
+                  "source": [
+                    "kfc.orders"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "notificationHandler": {
+          "handler": "src/handlers/notifications.notification_handler",
+          "events": [
+            {
+              "sns": {
+                "arn": {
+                  "Ref": "NotificationsTopic"
+                },
+                "topicName": "kfc-notifications-${self:provider.stage}"
+              }
+            }
+          ]
+        }
+      },
+      "resources": {
+        "Resources": {
+          "OrdersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.ORDERS_TABLE}",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "PK",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "SK",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "GSI1PK",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "GSI1SK",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "PK",
+                  "KeyType": "HASH"
+                },
+                {
+                  "AttributeName": "SK",
+                  "KeyType": "RANGE"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "GSI1",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "GSI1PK",
+                      "KeyType": "HASH"
+                    },
+                    {
+                      "AttributeName": "GSI1SK",
+                      "KeyType": "RANGE"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ]
+            }
+          },
+          "ConnectionsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.CONNECTIONS_TABLE}",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "connectionId",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "tenantId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "connectionId",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "TenantIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "tenantId",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ]
+            }
+          },
+          "TenantsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.TENANTS_TABLE}",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "tenantId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "tenantId",
+                  "KeyType": "HASH"
+                }
+              ]
+            }
+          },
+          "MenuTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.MENU_TABLE}",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "PK",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "SK",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "PK",
+                  "KeyType": "HASH"
+                },
+                {
+                  "AttributeName": "SK",
+                  "KeyType": "RANGE"
+                }
+              ]
+            }
+          },
+          "UsersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.USERS_TABLE}",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "PK",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "SK",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "GSI1PK",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "GSI1SK",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "PK",
+                  "KeyType": "HASH"
+                },
+                {
+                  "AttributeName": "SK",
+                  "KeyType": "RANGE"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "GSI1",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "GSI1PK",
+                      "KeyType": "HASH"
+                    },
+                    {
+                      "AttributeName": "GSI1SK",
+                      "KeyType": "RANGE"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ]
+            }
+          },
+          "InventoryTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.INVENTORY_TABLE}",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "PK",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "SK",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "PK",
+                  "KeyType": "HASH"
+                },
+                {
+                  "AttributeName": "SK",
+                  "KeyType": "RANGE"
+                }
+              ]
+            }
+          },
+          "PromotionsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.PROMOTIONS_TABLE}",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "PK",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "SK",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "PK",
+                  "KeyType": "HASH"
+                },
+                {
+                  "AttributeName": "SK",
+                  "KeyType": "RANGE"
+                }
+              ]
+            }
+          },
+          "CustomersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.CUSTOMERS_TABLE}",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "PK",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "SK",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "PK",
+                  "KeyType": "HASH"
+                },
+                {
+                  "AttributeName": "SK",
+                  "KeyType": "RANGE"
+                }
+              ]
+            }
+          },
+          "OrdersDeadLetterQueue": {
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+              "QueueName": "kfc-orders-dlq-${self:provider.stage}",
+              "MessageRetentionPeriod": 1209600
+            }
+          },
+          "OrdersQueue": {
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+              "QueueName": "kfc-orders-queue-${self:provider.stage}",
+              "VisibilityTimeout": 60,
+              "MessageRetentionPeriod": 86400,
+              "RedrivePolicy": {
+                "deadLetterTargetArn": {
+                  "Fn::GetAtt": [
+                    "OrdersDeadLetterQueue",
+                    "Arn"
+                  ]
+                },
+                "maxReceiveCount": 3
+              }
+            }
+          },
+          "NotificationsTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+              "TopicName": "kfc-notifications-${self:provider.stage}"
+            }
+          },
+          "OrderEventBus": {
+            "Type": "AWS::Events::EventBus",
+            "Properties": {
+              "Name": "${self:provider.environment.ORDER_EVENTS_BUS}"
+            }
+          },
+          "AssetsBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketName": "kfc-assets-${self:provider.stage}-595645243021",
+              "PublicAccessBlockConfiguration": {
+                "BlockPublicAcls": false,
+                "BlockPublicPolicy": false,
+                "IgnorePublicAcls": false,
+                "RestrictPublicBuckets": false
+              },
+              "CorsConfiguration": {
+                "CorsRules": [
+                  {
+                    "AllowedHeaders": [
+                      "*"
+                    ],
+                    "AllowedMethods": [
+                      "GET",
+                      "PUT",
+                      "POST"
+                    ],
+                    "AllowedOrigins": [
+                      "*"
+                    ],
+                    "MaxAge": 3000
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "HttpApiEndpoint": {
+            "Description": "HTTP API Endpoint",
+            "Value": {
+              "Fn::Sub": "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
+            }
+          },
+          "WebSocketApiEndpoint": {
+            "Description": "WebSocket API Endpoint",
+            "Value": {
+              "Fn::Sub": "wss://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
+            }
+          },
+          "OrdersTableName": {
+            "Description": "Orders DynamoDB Table Name",
+            "Value": {
+              "Ref": "OrdersTable"
+            }
+          },
+          "OrdersQueueUrl": {
+            "Description": "Orders SQS Queue URL",
+            "Value": {
+              "Ref": "OrdersQueue"
+            }
+          },
+          "NotificationsTopicArn": {
+            "Description": "Notifications SNS Topic ARN",
+            "Value": {
+              "Ref": "NotificationsTopic"
+            }
+          },
+          "EventBusName": {
+            "Description": "EventBridge Bus Name",
+            "Value": {
+              "Ref": "OrderEventBus"
+            }
+          },
+          "AssetsBucketName": {
+            "Description": "Assets S3 Bucket Name",
+            "Value": {
+              "Ref": "AssetsBucket"
+            }
+          }
+        }
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "python3.11",
+      "stage": "dev",
+      "region": "us-east-1",
+      "iam": {
+        "role": "arn:aws:iam::595645243021:role/LabRole"
+      },
+      "environment": {
+        "STAGE": "${self:provider.stage}",
+        "REGION": "${self:provider.region}",
+        "ORDERS_TABLE": "kfc-orders-${self:provider.stage}",
+        "CONNECTIONS_TABLE": "kfc-connections-${self:provider.stage}",
+        "TENANTS_TABLE": "kfc-tenants-${self:provider.stage}",
+        "MENU_TABLE": "kfc-menu-${self:provider.stage}",
+        "USERS_TABLE": "kfc-users-${self:provider.stage}",
+        "INVENTORY_TABLE": "kfc-inventory-${self:provider.stage}",
+        "PROMOTIONS_TABLE": "kfc-promotions-${self:provider.stage}",
+        "CUSTOMERS_TABLE": "kfc-customers-${self:provider.stage}",
+        "ORDER_EVENTS_BUS": "kfc-events-${self:provider.stage}",
+        "ORDERS_QUEUE_URL": {
+          "Ref": "OrdersQueue"
+        },
+        "NOTIFICATIONS_TOPIC_ARN": {
+          "Ref": "NotificationsTopic"
+        }
+      }
+    },
+    "error": {
+      "message": "You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".",
+      "stack": "Error: You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".\n    at Authentication.getAuthenticatedData (file:///Users/marcosotomaceda/.serverless/releases/4.25.0/package/dist/sf-core.js:720:11184)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async Authentication.authenticate (file:///Users/marcosotomaceda/.serverless/releases/4.25.0/package/dist/sf-core.js:723:4103)\n    at async TraditionalRunner.resolveVariablesAndAuthenticate (file:///Users/marcosotomaceda/.serverless/releases/4.25.0/package/dist/sf-core.js:732:1380)\n    at async TraditionalRunner.run (file:///Users/marcosotomaceda/.serverless/releases/4.25.0/package/dist/sf-core.js:1380:27992)\n    at async route (file:///Users/marcosotomaceda/.serverless/releases/4.25.0/package/dist/sf-core.js:1555:2878)\n    at async Object.run (file:///Users/marcosotomaceda/.serverless/releases/4.25.0/package/dist/sf-core.js:1556:3845)\n    at async run2 (file:///Users/marcosotomaceda/.serverless/releases/4.25.0/package/dist/sf-core.js:1556:4999)"
+    },
+    "serviceRawFile": "# ============================================================================\n# KFC ORDER MANAGEMENT SYSTEM - SERVERLESS CONFIGURATION\n# Optimizado para AWS Academy LabRole (sin crear roles IAM)\n# ============================================================================\n\nservice: kfc-core\n\n# IMPORTANTE: No usar 'org' - intenta crear roles IAM custom\n# org: marcosotomac\n\nprovider:\n  name: aws\n  runtime: python3.11\n  stage: ${opt:stage, 'dev'}\n  region: ${opt:region, 'us-east-1'}\n\n  # ============================================\n  # IAM - Usar LabRole existente de AWS Academy\n  # ============================================\n  iam:\n    role: arn:aws:iam::595645243021:role/LabRole\n\n  # ============================================\n  # Variables de entorno para todas las funciones\n  # ============================================\n  environment:\n    STAGE: ${self:provider.stage}\n    REGION: ${self:provider.region}\n    ORDERS_TABLE: kfc-orders-${self:provider.stage}\n    CONNECTIONS_TABLE: kfc-connections-${self:provider.stage}\n    TENANTS_TABLE: kfc-tenants-${self:provider.stage}\n    MENU_TABLE: kfc-menu-${self:provider.stage}\n    USERS_TABLE: kfc-users-${self:provider.stage}\n    INVENTORY_TABLE: kfc-inventory-${self:provider.stage}\n    PROMOTIONS_TABLE: kfc-promotions-${self:provider.stage}\n    CUSTOMERS_TABLE: kfc-customers-${self:provider.stage}\n    ORDER_EVENTS_BUS: kfc-events-${self:provider.stage}\n    ORDERS_QUEUE_URL: !Ref OrdersQueue\n    NOTIFICATIONS_TOPIC_ARN: !Ref NotificationsTopic\n\n  # ============================================\n  # Deshabilitar logs automáticos (requieren IAM)\n  # ============================================\n  # NO usar logs: websocket: true (crea roles IAM)\n\n# ============================================\n# Custom configuration\n# ============================================\ncustom:\n  pythonRequirements:\n    dockerizePip: false\n    slim: true\n    noDeploy:\n      - boto3\n      - botocore\n  \n  # CORS configuration for all HTTP endpoints\n  corsConfig:\n    origin: '*'\n    headers:\n      - Content-Type\n      - X-Amz-Date\n      - Authorization\n      - X-Api-Key\n      - X-Amz-Security-Token\n      - X-Tenant-Id\n    allowCredentials: false\n\n# ============================================\n# Package configuration\n# ============================================\npackage:\n  individually: false\n  patterns:\n    - \"!node_modules/**\"\n    - \"!.git/**\"\n    - \"!.venv/**\"\n    - \"!__pycache__/**\"\n    - \"!*.md\"\n    - \"!tests/**\"\n    - \"src/**\"\n\n# ============================================\n# FUNCTIONS - Lambda Handlers\n# ============================================\nfunctions:\n  # ==================== WEBSOCKET HANDLERS ====================\n  wsConnect:\n    handler: src/handlers/websocket.connect_handler\n    events:\n      - websocket:\n          route: $connect\n\n  wsDisconnect:\n    handler: src/handlers/websocket.disconnect_handler\n    events:\n      - websocket:\n          route: $disconnect\n\n  wsDefault:\n    handler: src/handlers/websocket.default_handler\n    events:\n      - websocket:\n          route: $default\n\n  wsSubscribe:\n    handler: src/handlers/websocket.subscribe_handler\n    events:\n      - websocket:\n          route: subscribe\n\n  # ==================== AUTH HANDLERS ====================\n  register:\n    handler: src/handlers/auth.register_handler\n    events:\n      - http:\n          path: /auth/register\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  login:\n    handler: src/handlers/auth.login_handler\n    events:\n      - http:\n          path: /auth/login\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  # ==================== TENANT HANDLERS ====================\n  createTenant:\n    handler: src/handlers/tenants.create_tenant_handler\n    events:\n      - http:\n          path: /tenants\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getTenants:\n    handler: src/handlers/tenants.get_tenants_handler\n    events:\n      - http:\n          path: /tenants\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  getTenant:\n    handler: src/handlers/tenants.get_tenant_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  # ==================== MENU HANDLERS ====================\n  createMenuItem:\n    handler: src/handlers/menu.create_menu_item_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/menu\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getMenu:\n    handler: src/handlers/menu.get_menu_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/menu\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  updateMenuItem:\n    handler: src/handlers/menu.update_menu_item_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/menu/{itemId}\n          method: put\n          cors: ${self:custom.corsConfig}\n\n  deleteMenuItem:\n    handler: src/handlers/menu.delete_menu_item_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/menu/{itemId}\n          method: delete\n          cors: ${self:custom.corsConfig}\n\n  # ==================== ORDER HANDLERS ====================\n  createOrder:\n    handler: src/handlers/orders.create_order_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getOrders:\n    handler: src/handlers/orders.get_orders_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  getOrder:\n    handler: src/handlers/orders.get_order_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  getOrdersByStatus:\n    handler: src/handlers/orders.get_orders_by_status_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/status/{status}\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  cancelOrder:\n    handler: src/handlers/orders.cancel_order_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/cancel\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  updateOrder:\n    handler: src/handlers/orders.update_order_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}\n          method: put\n          cors: ${self:custom.corsConfig}\n\n  # ==================== WORKFLOW HANDLERS ====================\n  takeOrder:\n    handler: src/handlers/workflow.take_order_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/workflow/take\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  startCooking:\n    handler: src/handlers/workflow.start_cooking_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/workflow/cook\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  finishCooking:\n    handler: src/handlers/workflow.finish_cooking_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/workflow/cooked\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  packOrder:\n    handler: src/handlers/workflow.pack_order_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/workflow/pack\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  startDelivery:\n    handler: src/handlers/workflow.start_delivery_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/workflow/deliver\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  completeDelivery:\n    handler: src/handlers/workflow.complete_delivery_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/workflow/complete\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  # ==================== DASHBOARD HANDLERS ====================\n  getDashboard:\n    handler: src/handlers/dashboard.get_dashboard_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/dashboard\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  getWorkflowStats:\n    handler: src/handlers/dashboard.get_workflow_stats_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/dashboard/workflow-stats\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  # ==================== STAFF HANDLERS ====================\n  getStaff:\n    handler: src/handlers/staff.get_staff_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/staff\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  createStaff:\n    handler: src/handlers/staff.create_staff_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/staff\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  updateStaff:\n    handler: src/handlers/staff.update_staff_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/staff/{staffId}\n          method: put\n          cors: ${self:custom.corsConfig}\n\n  getStaffMember:\n    handler: src/handlers/staff.get_staff_member_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/staff/{staffId}\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  # ==================== INVENTORY HANDLERS ====================\n  getInventory:\n    handler: src/handlers/inventory.get_inventory_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/inventory\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  createInventoryItem:\n    handler: src/handlers/inventory.create_inventory_item_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/inventory\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  updateInventoryItem:\n    handler: src/handlers/inventory.update_inventory_item_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/inventory/{itemId}\n          method: put\n          cors: ${self:custom.corsConfig}\n\n  adjustInventory:\n    handler: src/handlers/inventory.adjust_inventory_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/inventory/{itemId}/adjust\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getLowStockAlerts:\n    handler: src/handlers/inventory.get_low_stock_alerts_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/inventory/alerts/low-stock\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  # ==================== PROMOTIONS HANDLERS ====================\n  getPromotions:\n    handler: src/handlers/promotions.get_promotions_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/promotions\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  createPromotion:\n    handler: src/handlers/promotions.create_promotion_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/promotions\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  validatePromoCode:\n    handler: src/handlers/promotions.validate_promo_code_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/promotions/validate\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  applyPromotion:\n    handler: src/handlers/promotions.apply_promotion_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/promotions/apply\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getActivePromotions:\n    handler: src/handlers/promotions.get_active_promotions_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/promotions/active\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  # ==================== CUSTOMERS HANDLERS ====================\n  getCustomerProfile:\n    handler: src/handlers/customers.get_customer_profile_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/customers/{customerId}/profile\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  updateCustomerProfile:\n    handler: src/handlers/customers.update_customer_profile_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/customers/{customerId}/profile\n          method: put\n          cors: ${self:custom.corsConfig}\n\n  getCustomerFavorites:\n    handler: src/handlers/customers.get_favorites_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/customers/{customerId}/favorites\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  addCustomerFavorite:\n    handler: src/handlers/customers.add_favorite_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/customers/{customerId}/favorites\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getCustomerAddresses:\n    handler: src/handlers/customers.get_addresses_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/customers/{customerId}/addresses\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  addCustomerAddress:\n    handler: src/handlers/customers.add_address_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/customers/{customerId}/addresses\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  trackOrder:\n    handler: src/handlers/customers.track_order_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/track\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  reorder:\n    handler: src/handlers/customers.reorder_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/reorder\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  # ==================== REPORTS HANDLERS ====================\n  getSalesReport:\n    handler: src/handlers/reports.get_sales_report_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/reports/sales\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  getOrdersReport:\n    handler: src/handlers/reports.get_orders_report_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/reports/orders\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  getDailyReport:\n    handler: src/handlers/reports.get_daily_report_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/reports/daily\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  # ==================== RATINGS HANDLERS ====================\n  createOrderRating:\n    handler: src/handlers/ratings.create_order_rating_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/rating\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getOrderRating:\n    handler: src/handlers/ratings.get_order_rating_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/rating\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  getTenantRatings:\n    handler: src/handlers/ratings.get_tenant_ratings_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/ratings\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  createMenuItemReview:\n    handler: src/handlers/ratings.create_menu_item_review_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/menu/{itemId}/reviews\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getMenuItemReviews:\n    handler: src/handlers/ratings.get_menu_item_reviews_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/menu/{itemId}/reviews\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  # ==================== LOCATIONS HANDLERS ====================\n  createLocation:\n    handler: src/handlers/locations.create_location_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/locations\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getLocations:\n    handler: src/handlers/locations.get_locations_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/locations\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  getLocation:\n    handler: src/handlers/locations.get_location_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/locations/{locationId}\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  findNearbyLocations:\n    handler: src/handlers/locations.find_nearby_locations_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/locations/nearby\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  checkDeliveryAvailability:\n    handler: src/handlers/locations.check_delivery_availability_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/locations/check-delivery\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  # ==================== PAYMENTS HANDLERS ====================\n  processPayment:\n    handler: src/handlers/payments.process_payment_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/payment\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  verifyPayment:\n    handler: src/handlers/payments.verify_payment_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/payments/{paymentId}/verify\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getOrderPayments:\n    handler: src/handlers/payments.get_order_payments_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/payments\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  processRefund:\n    handler: src/handlers/payments.process_refund_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/orders/{orderId}/refund\n          method: post\n          cors: ${self:custom.corsConfig}\n\n  getPaymentMethods:\n    handler: src/handlers/payments.get_payment_methods_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/payment-methods\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  getDailyRevenue:\n    handler: src/handlers/payments.get_daily_revenue_handler\n    events:\n      - http:\n          path: /tenants/{tenantId}/payments/daily-revenue\n          method: get\n          cors: ${self:custom.corsConfig}\n\n  # ==================== SQS EVENT HANDLERS ====================\n  processOrderQueue:\n    handler: src/handlers/queue.process_order_queue_handler\n    events:\n      - sqs:\n          arn: !GetAtt OrdersQueue.Arn\n          batchSize: 1\n\n  processDLQ:\n    handler: src/handlers/queue.process_dlq_handler\n    events:\n      - sqs:\n          arn: !GetAtt OrdersDeadLetterQueue.Arn\n          batchSize: 1\n\n  # ==================== EVENTBRIDGE HANDLERS ====================\n  orderEventHandler:\n    handler: src/handlers/events.order_events_handler\n    events:\n      - eventBridge:\n          eventBus: !Ref OrderEventBus\n          pattern:\n            source:\n              - kfc.orders\n\n  # ==================== SNS NOTIFICATION HANDLER ====================\n  notificationHandler:\n    handler: src/handlers/notifications.notification_handler\n    events:\n      - sns:\n          arn: !Ref NotificationsTopic\n          topicName: kfc-notifications-${self:provider.stage}\n\n# ============================================\n# RESOURCES - AWS CloudFormation Resources\n# ============================================\nresources:\n  Resources:\n    # ==================== DYNAMODB TABLES ====================\n    OrdersTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.ORDERS_TABLE}\n        BillingMode: PAY_PER_REQUEST\n        AttributeDefinitions:\n          - AttributeName: PK\n            AttributeType: S\n          - AttributeName: SK\n            AttributeType: S\n          - AttributeName: GSI1PK\n            AttributeType: S\n          - AttributeName: GSI1SK\n            AttributeType: S\n        KeySchema:\n          - AttributeName: PK\n            KeyType: HASH\n          - AttributeName: SK\n            KeyType: RANGE\n        GlobalSecondaryIndexes:\n          - IndexName: GSI1\n            KeySchema:\n              - AttributeName: GSI1PK\n                KeyType: HASH\n              - AttributeName: GSI1SK\n                KeyType: RANGE\n            Projection:\n              ProjectionType: ALL\n\n    ConnectionsTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.CONNECTIONS_TABLE}\n        BillingMode: PAY_PER_REQUEST\n        AttributeDefinitions:\n          - AttributeName: connectionId\n            AttributeType: S\n          - AttributeName: tenantId\n            AttributeType: S\n        KeySchema:\n          - AttributeName: connectionId\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: TenantIndex\n            KeySchema:\n              - AttributeName: tenantId\n                KeyType: HASH\n            Projection:\n              ProjectionType: ALL\n\n    TenantsTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.TENANTS_TABLE}\n        BillingMode: PAY_PER_REQUEST\n        AttributeDefinitions:\n          - AttributeName: tenantId\n            AttributeType: S\n        KeySchema:\n          - AttributeName: tenantId\n            KeyType: HASH\n\n    MenuTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.MENU_TABLE}\n        BillingMode: PAY_PER_REQUEST\n        AttributeDefinitions:\n          - AttributeName: PK\n            AttributeType: S\n          - AttributeName: SK\n            AttributeType: S\n        KeySchema:\n          - AttributeName: PK\n            KeyType: HASH\n          - AttributeName: SK\n            KeyType: RANGE\n\n    UsersTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.USERS_TABLE}\n        BillingMode: PAY_PER_REQUEST\n        AttributeDefinitions:\n          - AttributeName: PK\n            AttributeType: S\n          - AttributeName: SK\n            AttributeType: S\n          - AttributeName: GSI1PK\n            AttributeType: S\n          - AttributeName: GSI1SK\n            AttributeType: S\n        KeySchema:\n          - AttributeName: PK\n            KeyType: HASH\n          - AttributeName: SK\n            KeyType: RANGE\n        GlobalSecondaryIndexes:\n          - IndexName: GSI1\n            KeySchema:\n              - AttributeName: GSI1PK\n                KeyType: HASH\n              - AttributeName: GSI1SK\n                KeyType: RANGE\n            Projection:\n              ProjectionType: ALL\n\n    InventoryTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.INVENTORY_TABLE}\n        BillingMode: PAY_PER_REQUEST\n        AttributeDefinitions:\n          - AttributeName: PK\n            AttributeType: S\n          - AttributeName: SK\n            AttributeType: S\n        KeySchema:\n          - AttributeName: PK\n            KeyType: HASH\n          - AttributeName: SK\n            KeyType: RANGE\n\n    PromotionsTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.PROMOTIONS_TABLE}\n        BillingMode: PAY_PER_REQUEST\n        AttributeDefinitions:\n          - AttributeName: PK\n            AttributeType: S\n          - AttributeName: SK\n            AttributeType: S\n        KeySchema:\n          - AttributeName: PK\n            KeyType: HASH\n          - AttributeName: SK\n            KeyType: RANGE\n\n    CustomersTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.CUSTOMERS_TABLE}\n        BillingMode: PAY_PER_REQUEST\n        AttributeDefinitions:\n          - AttributeName: PK\n            AttributeType: S\n          - AttributeName: SK\n            AttributeType: S\n        KeySchema:\n          - AttributeName: PK\n            KeyType: HASH\n          - AttributeName: SK\n            KeyType: RANGE\n\n    # ==================== SQS QUEUES ====================\n    OrdersDeadLetterQueue:\n      Type: AWS::SQS::Queue\n      Properties:\n        QueueName: kfc-orders-dlq-${self:provider.stage}\n        MessageRetentionPeriod: 1209600\n\n    OrdersQueue:\n      Type: AWS::SQS::Queue\n      Properties:\n        QueueName: kfc-orders-queue-${self:provider.stage}\n        VisibilityTimeout: 60\n        MessageRetentionPeriod: 86400\n        RedrivePolicy:\n          deadLetterTargetArn: !GetAtt OrdersDeadLetterQueue.Arn\n          maxReceiveCount: 3\n\n    # ==================== SNS TOPICS ====================\n    NotificationsTopic:\n      Type: AWS::SNS::Topic\n      Properties:\n        TopicName: kfc-notifications-${self:provider.stage}\n\n    # ==================== EVENTBRIDGE ====================\n    OrderEventBus:\n      Type: AWS::Events::EventBus\n      Properties:\n        Name: ${self:provider.environment.ORDER_EVENTS_BUS}\n\n    # ==================== S3 BUCKET ====================\n    AssetsBucket:\n      Type: AWS::S3::Bucket\n      Properties:\n        BucketName: kfc-assets-${self:provider.stage}-595645243021\n        PublicAccessBlockConfiguration:\n          BlockPublicAcls: false\n          BlockPublicPolicy: false\n          IgnorePublicAcls: false\n          RestrictPublicBuckets: false\n        CorsConfiguration:\n          CorsRules:\n            - AllowedHeaders:\n                - \"*\"\n              AllowedMethods:\n                - GET\n                - PUT\n                - POST\n              AllowedOrigins:\n                - \"*\"\n              MaxAge: 3000\n\n  # ==================== OUTPUTS ====================\n  Outputs:\n    HttpApiEndpoint:\n      Description: \"HTTP API Endpoint\"\n      Value: !Sub \"https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}\"\n\n    WebSocketApiEndpoint:\n      Description: \"WebSocket API Endpoint\"\n      Value: !Sub \"wss://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}\"\n\n    OrdersTableName:\n      Description: \"Orders DynamoDB Table Name\"\n      Value: !Ref OrdersTable\n\n    OrdersQueueUrl:\n      Description: \"Orders SQS Queue URL\"\n      Value: !Ref OrdersQueue\n\n    NotificationsTopicArn:\n      Description: \"Notifications SNS Topic ARN\"\n      Value: !Ref NotificationsTopic\n\n    EventBusName:\n      Description: \"EventBridge Bus Name\"\n      Value: !Ref OrderEventBus\n\n    AssetsBucketName:\n      Description: \"Assets S3 Bucket Name\"\n      Value: !Ref AssetsBucket\n",
+    "command": [
+      "deploy"
+    ],
+    "options": {
+      "verbose": true
+    },
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}
