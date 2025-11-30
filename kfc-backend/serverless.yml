@@ -5,24 +5,35 @@
 
 service: kfc-core
 
-# IMPORTANTE: No usar 'org' - intenta crear roles IAM custom
-# org: marcosotomac
-
 provider:
   name: aws
   runtime: python3.11
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
 
-  # ============================================
   # IAM - Usar LabRole existente de AWS Academy
-  # ============================================
   iam:
     role: arn:aws:iam::595645243021:role/LabRole
 
-  # ============================================
-  # Variables de entorno para todas las funciones
-  # ============================================
+  # HTTP API con CORS global (menos recursos que REST API)
+  httpApi:
+    cors:
+      allowedOrigins:
+        - '*'
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+        - X-Api-Key
+        - X-Tenant-Id
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+
+  # Variables de entorno
   environment:
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
@@ -39,14 +50,6 @@ provider:
     NOTIFICATIONS_TOPIC_ARN: !Ref NotificationsTopic
     ASSETS_BUCKET: kfc-assets-${self:provider.stage}-595645243021
 
-  # ============================================
-  # Deshabilitar logs automáticos (requieren IAM)
-  # ============================================
-  # NO usar logs: websocket: true (crea roles IAM)
-
-# ============================================
-# Custom configuration
-# ============================================
 custom:
   pythonRequirements:
     dockerizePip: false
@@ -55,21 +58,6 @@ custom:
       - boto3
       - botocore
 
-  # CORS configuration for all HTTP endpoints
-  corsConfig:
-    origin: "*"
-    headers:
-      - Content-Type
-      - X-Amz-Date
-      - Authorization
-      - X-Api-Key
-      - X-Amz-Security-Token
-      - X-Tenant-Id
-    allowCredentials: false
-
-# ============================================
-# Package configuration
-# ============================================
 package:
   individually: false
   patterns:
@@ -81,28 +69,25 @@ package:
     - "!tests/**"
     - "src/**"
 
-# ============================================
-# FUNCTIONS - Lambda Handlers
-# ============================================
 functions:
   # ==================== WEBSOCKET HANDLERS ====================
   wsConnect:
     handler: src/handlers/websocket.connect_handler
     events:
       - websocket:
-          route: $connect
+          route: \$connect
 
   wsDisconnect:
     handler: src/handlers/websocket.disconnect_handler
     events:
       - websocket:
-          route: $disconnect
+          route: \$disconnect
 
   wsDefault:
     handler: src/handlers/websocket.default_handler
     events:
       - websocket:
-          route: $default
+          route: \$default
 
   wsSubscribe:
     handler: src/handlers/websocket.subscribe_handler
@@ -110,548 +95,454 @@ functions:
       - websocket:
           route: subscribe
 
-  # ==================== AUTH HANDLERS ====================
+  # ==================== AUTH ====================
   register:
     handler: src/handlers/auth.register_handler
     events:
-      - http:
+      - httpApi:
           path: /auth/register
           method: post
-          cors: ${self:custom.corsConfig}
 
   login:
     handler: src/handlers/auth.login_handler
     events:
-      - http:
+      - httpApi:
           path: /auth/login
           method: post
-          cors: ${self:custom.corsConfig}
 
-  # ==================== TENANT HANDLERS ====================
+  # ==================== TENANTS ====================
   createTenant:
     handler: src/handlers/tenants.create_tenant_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants
           method: post
-          cors: ${self:custom.corsConfig}
 
   getTenants:
     handler: src/handlers/tenants.get_tenants_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants
           method: get
-          cors: ${self:custom.corsConfig}
 
   getTenant:
     handler: src/handlers/tenants.get_tenant_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}
           method: get
-          cors: ${self:custom.corsConfig}
 
-  # ==================== MENU HANDLERS ====================
+  # ==================== MENU ====================
   createMenuItem:
     handler: src/handlers/menu.create_menu_item_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/menu
           method: post
-          cors: ${self:custom.corsConfig}
 
   getMenu:
     handler: src/handlers/menu.get_menu_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/menu
           method: get
-          cors: ${self:custom.corsConfig}
 
   updateMenuItem:
     handler: src/handlers/menu.update_menu_item_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/menu/{itemId}
           method: put
-          cors: ${self:custom.corsConfig}
 
   deleteMenuItem:
     handler: src/handlers/menu.delete_menu_item_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/menu/{itemId}
           method: delete
-          cors: ${self:custom.corsConfig}
 
-  # ==================== UPLOAD HANDLERS ====================
+  # ==================== UPLOADS ====================
   getUploadUrl:
     handler: src/handlers/uploads.get_upload_url_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/uploads/url
           method: get
-          cors: ${self:custom.corsConfig}
 
-  deleteAsset:
-    handler: src/handlers/uploads.delete_asset_handler
-    events:
-      - http:
-          path: /tenants/{tenantId}/uploads/{key}
-          method: delete
-          cors: ${self:custom.corsConfig}
-
-  # ==================== ORDER HANDLERS ====================
+  # ==================== ORDERS ====================
   createOrder:
     handler: src/handlers/orders.create_order_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders
           method: post
-          cors: ${self:custom.corsConfig}
 
   getOrders:
     handler: src/handlers/orders.get_orders_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders
           method: get
-          cors: ${self:custom.corsConfig}
 
   getOrder:
     handler: src/handlers/orders.get_order_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}
           method: get
-          cors: ${self:custom.corsConfig}
 
   getOrdersByStatus:
     handler: src/handlers/orders.get_orders_by_status_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/status/{status}
           method: get
-          cors: ${self:custom.corsConfig}
-
-  cancelOrder:
-    handler: src/handlers/orders.cancel_order_handler
-    events:
-      - http:
-          path: /tenants/{tenantId}/orders/{orderId}/cancel
-          method: post
-          cors: ${self:custom.corsConfig}
 
   updateOrder:
     handler: src/handlers/orders.update_order_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}
           method: put
-          cors: ${self:custom.corsConfig}
 
-  # ==================== WORKFLOW HANDLERS ====================
+  cancelOrder:
+    handler: src/handlers/orders.cancel_order_handler
+    events:
+      - httpApi:
+          path: /tenants/{tenantId}/orders/{orderId}/cancel
+          method: post
+
+  # ==================== WORKFLOW ====================
   takeOrder:
     handler: src/handlers/workflow.take_order_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/take
           method: post
-          cors: ${self:custom.corsConfig}
 
   startCooking:
     handler: src/handlers/workflow.start_cooking_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/cook
           method: post
-          cors: ${self:custom.corsConfig}
 
   finishCooking:
     handler: src/handlers/workflow.finish_cooking_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/cooked
           method: post
-          cors: ${self:custom.corsConfig}
 
   packOrder:
     handler: src/handlers/workflow.pack_order_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/pack
           method: post
-          cors: ${self:custom.corsConfig}
 
   startDelivery:
     handler: src/handlers/workflow.start_delivery_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/deliver
           method: post
-          cors: ${self:custom.corsConfig}
 
   completeDelivery:
     handler: src/handlers/workflow.complete_delivery_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/workflow/complete
           method: post
-          cors: ${self:custom.corsConfig}
 
-  # ==================== DASHBOARD HANDLERS ====================
+  # ==================== DASHBOARD ====================
   getDashboard:
     handler: src/handlers/dashboard.get_dashboard_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/dashboard
           method: get
-          cors: ${self:custom.corsConfig}
 
   getWorkflowStats:
     handler: src/handlers/dashboard.get_workflow_stats_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/dashboard/workflow-stats
           method: get
-          cors: ${self:custom.corsConfig}
 
-  # ==================== STAFF HANDLERS ====================
+  # ==================== STAFF ====================
   getStaff:
     handler: src/handlers/staff.get_staff_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/staff
           method: get
-          cors: ${self:custom.corsConfig}
 
   createStaff:
     handler: src/handlers/staff.create_staff_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/staff
           method: post
-          cors: ${self:custom.corsConfig}
 
   updateStaff:
     handler: src/handlers/staff.update_staff_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/staff/{staffId}
           method: put
-          cors: ${self:custom.corsConfig}
 
   getStaffMember:
     handler: src/handlers/staff.get_staff_member_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/staff/{staffId}
           method: get
-          cors: ${self:custom.corsConfig}
 
-  # ==================== INVENTORY HANDLERS ====================
+  # ==================== INVENTORY ====================
   getInventory:
     handler: src/handlers/inventory.get_inventory_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/inventory
           method: get
-          cors: ${self:custom.corsConfig}
 
   createInventoryItem:
     handler: src/handlers/inventory.create_inventory_item_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/inventory
           method: post
-          cors: ${self:custom.corsConfig}
 
   updateInventoryItem:
     handler: src/handlers/inventory.update_inventory_item_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/inventory/{itemId}
           method: put
-          cors: ${self:custom.corsConfig}
 
   adjustInventory:
     handler: src/handlers/inventory.adjust_inventory_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/inventory/{itemId}/adjust
           method: post
-          cors: ${self:custom.corsConfig}
 
   getLowStockAlerts:
     handler: src/handlers/inventory.get_low_stock_alerts_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/inventory/alerts/low-stock
           method: get
-          cors: ${self:custom.corsConfig}
 
-  # ==================== PROMOTIONS HANDLERS ====================
+  # ==================== PROMOTIONS ====================
   getPromotions:
     handler: src/handlers/promotions.get_promotions_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/promotions
           method: get
-          cors: ${self:custom.corsConfig}
 
   createPromotion:
     handler: src/handlers/promotions.create_promotion_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/promotions
           method: post
-          cors: ${self:custom.corsConfig}
 
   validatePromoCode:
     handler: src/handlers/promotions.validate_promo_code_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/promotions/validate
           method: post
-          cors: ${self:custom.corsConfig}
 
   applyPromotion:
     handler: src/handlers/promotions.apply_promotion_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/promotions/apply
           method: post
-          cors: ${self:custom.corsConfig}
 
   getActivePromotions:
     handler: src/handlers/promotions.get_active_promotions_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/promotions/active
           method: get
-          cors: ${self:custom.corsConfig}
 
-  # ==================== CUSTOMERS HANDLERS ====================
+  # ==================== CUSTOMERS ====================
   getCustomerProfile:
     handler: src/handlers/customers.get_customer_profile_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/customers/{customerId}/profile
           method: get
-          cors: ${self:custom.corsConfig}
 
   updateCustomerProfile:
     handler: src/handlers/customers.update_customer_profile_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/customers/{customerId}/profile
           method: put
-          cors: ${self:custom.corsConfig}
 
   getCustomerFavorites:
     handler: src/handlers/customers.get_favorites_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/customers/{customerId}/favorites
           method: get
-          cors: ${self:custom.corsConfig}
 
   addCustomerFavorite:
     handler: src/handlers/customers.add_favorite_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/customers/{customerId}/favorites
           method: post
-          cors: ${self:custom.corsConfig}
 
   getCustomerAddresses:
     handler: src/handlers/customers.get_addresses_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/customers/{customerId}/addresses
           method: get
-          cors: ${self:custom.corsConfig}
 
   addCustomerAddress:
     handler: src/handlers/customers.add_address_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/customers/{customerId}/addresses
           method: post
-          cors: ${self:custom.corsConfig}
 
   trackOrder:
     handler: src/handlers/customers.track_order_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/track
           method: get
-          cors: ${self:custom.corsConfig}
 
   reorder:
     handler: src/handlers/customers.reorder_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/reorder
           method: post
-          cors: ${self:custom.corsConfig}
 
-  # ==================== REPORTS HANDLERS ====================
+  # ==================== REPORTS ====================
   getSalesReport:
     handler: src/handlers/reports.get_sales_report_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/reports/sales
           method: get
-          cors: ${self:custom.corsConfig}
 
   getOrdersReport:
     handler: src/handlers/reports.get_orders_report_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/reports/orders
           method: get
-          cors: ${self:custom.corsConfig}
 
   getDailyReport:
     handler: src/handlers/reports.get_daily_report_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/reports/daily
           method: get
-          cors: ${self:custom.corsConfig}
 
-  # ==================== RATINGS HANDLERS ====================
+  # ==================== RATINGS ====================
   createOrderRating:
     handler: src/handlers/ratings.create_order_rating_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/rating
           method: post
-          cors: ${self:custom.corsConfig}
 
   getOrderRating:
     handler: src/handlers/ratings.get_order_rating_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/rating
           method: get
-          cors: ${self:custom.corsConfig}
 
   getTenantRatings:
     handler: src/handlers/ratings.get_tenant_ratings_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/ratings
           method: get
-          cors: ${self:custom.corsConfig}
 
   createMenuItemReview:
     handler: src/handlers/ratings.create_menu_item_review_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/menu/{itemId}/reviews
           method: post
-          cors: ${self:custom.corsConfig}
 
   getMenuItemReviews:
     handler: src/handlers/ratings.get_menu_item_reviews_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/menu/{itemId}/reviews
           method: get
-          cors: ${self:custom.corsConfig}
 
-  # ==================== LOCATIONS HANDLERS ====================
+  # ==================== LOCATIONS ====================
   createLocation:
     handler: src/handlers/locations.create_location_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/locations
           method: post
-          cors: ${self:custom.corsConfig}
 
   getLocations:
     handler: src/handlers/locations.get_locations_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/locations
           method: get
-          cors: ${self:custom.corsConfig}
 
   getLocation:
     handler: src/handlers/locations.get_location_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/locations/{locationId}
           method: get
-          cors: ${self:custom.corsConfig}
 
   findNearbyLocations:
     handler: src/handlers/locations.find_nearby_locations_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/locations/nearby
           method: get
-          cors: ${self:custom.corsConfig}
 
   checkDeliveryAvailability:
     handler: src/handlers/locations.check_delivery_availability_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/locations/check-delivery
           method: post
-          cors: ${self:custom.corsConfig}
 
-  # ==================== PAYMENTS HANDLERS ====================
+  # ==================== PAYMENTS ====================
   processPayment:
     handler: src/handlers/payments.process_payment_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/payment
           method: post
-          cors: ${self:custom.corsConfig}
-
-  verifyPayment:
-    handler: src/handlers/payments.verify_payment_handler
-    events:
-      - http:
-          path: /tenants/{tenantId}/payments/{paymentId}/verify
-          method: post
-          cors: ${self:custom.corsConfig}
 
   getOrderPayments:
     handler: src/handlers/payments.get_order_payments_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/orders/{orderId}/payments
           method: get
-          cors: ${self:custom.corsConfig}
-
-  processRefund:
-    handler: src/handlers/payments.process_refund_handler
-    events:
-      - http:
-          path: /tenants/{tenantId}/orders/{orderId}/refund
-          method: post
-          cors: ${self:custom.corsConfig}
 
   getPaymentMethods:
     handler: src/handlers/payments.get_payment_methods_handler
     events:
-      - http:
+      - httpApi:
           path: /tenants/{tenantId}/payment-methods
           method: get
-          cors: ${self:custom.corsConfig}
-
-  getDailyRevenue:
-    handler: src/handlers/payments.get_daily_revenue_handler
-    events:
-      - http:
-          path: /tenants/{tenantId}/payments/daily-revenue
-          method: get
-          cors: ${self:custom.corsConfig}
 
   # ==================== SQS EVENT HANDLERS ====================
   processOrderQueue:
@@ -659,13 +550,6 @@ functions:
     events:
       - sqs:
           arn: !GetAtt OrdersQueue.Arn
-          batchSize: 1
-
-  processDLQ:
-    handler: src/handlers/queue.process_dlq_handler
-    events:
-      - sqs:
-          arn: !GetAtt OrdersDeadLetterQueue.Arn
           batchSize: 1
 
   # ==================== EVENTBRIDGE HANDLERS ====================
@@ -686,9 +570,6 @@ functions:
           arn: !Ref NotificationsTopic
           topicName: kfc-notifications-${self:provider.stage}
 
-# ============================================
-# RESOURCES - AWS CloudFormation Resources
-# ============================================
 resources:
   Resources:
     # ==================== DYNAMODB TABLES ====================
@@ -898,32 +779,26 @@ resources:
                 - "*"
               MaxAge: 3000
 
-  # ==================== OUTPUTS ====================
   Outputs:
     HttpApiEndpoint:
       Description: "HTTP API Endpoint"
-      Value: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
+      Value: !Sub "https://\${HttpApi}.execute-api.\${AWS::Region}.amazonaws.com"
 
     WebSocketApiEndpoint:
-      Description: "WebSocket API Endpoint"
-      Value: !Sub "wss://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
+      Description: "WebSocket API Endpoint"  
+      Value: !Sub "wss://\${WebsocketsApi}.execute-api.\${AWS::Region}.amazonaws.com/\${sls:stage}"
 
     OrdersTableName:
-      Description: "Orders DynamoDB Table Name"
       Value: !Ref OrdersTable
 
     OrdersQueueUrl:
-      Description: "Orders SQS Queue URL"
       Value: !Ref OrdersQueue
 
     NotificationsTopicArn:
-      Description: "Notifications SNS Topic ARN"
       Value: !Ref NotificationsTopic
 
     EventBusName:
-      Description: "EventBridge Bus Name"
       Value: !Ref OrderEventBus
 
     AssetsBucketName:
-      Description: "Assets S3 Bucket Name"
       Value: !Ref AssetsBucket
