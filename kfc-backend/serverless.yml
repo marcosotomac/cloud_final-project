@@ -782,11 +782,13 @@ resources:
   Outputs:
     HttpApiEndpoint:
       Description: "HTTP API Endpoint"
-      Value: !Sub "https://\${HttpApi}.execute-api.\${AWS::Region}.amazonaws.com"
+      Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
 
     WebSocketApiEndpoint:
       Description: "WebSocket API Endpoint"  
-      Value: !Sub "wss://\${WebsocketsApi}.execute-api.\${AWS::Region}.amazonaws.com/\${sls:stage}"
+      Value: !Sub 
+        - "wss://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+        - Stage: ${self:provider.stage}
 
     OrdersTableName:
       Value: !Ref OrdersTable
