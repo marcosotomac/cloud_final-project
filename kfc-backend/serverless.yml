@@ -75,19 +75,19 @@ functions:
     handler: src/handlers/websocket.connect_handler
     events:
       - websocket:
-          route: \$connect
+          route: $connect
 
   wsDisconnect:
     handler: src/handlers/websocket.disconnect_handler
     events:
       - websocket:
-          route: \$disconnect
+          route: $disconnect
 
   wsDefault:
     handler: src/handlers/websocket.default_handler
     events:
       - websocket:
-          route: \$default
+          route: $default
 
   wsSubscribe:
     handler: src/handlers/websocket.subscribe_handler
