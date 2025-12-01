@@ -36,6 +36,11 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
     navigate("/auth");
   };
 
+  const handleProfileClick = () => {
+    onClose();
+    navigate("/profile");
+  };
+
   const handleLogout = () => {
     logout();
     onClose();
@@ -49,7 +54,10 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
           <SheetHeader className="bg-primary p-4 text-primary-foreground">
             <div className="flex items-center">
               {isAuthenticated && user ? (
-                <div className="flex items-center gap-3 flex-1">
+                <button
+                  onClick={handleProfileClick}
+                  className="flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity"
+                >
                   <div className="h-10 w-10 rounded-full bg-primary-foreground/20 flex items-center justify-center">
                     <User className="h-6 w-6" />
                   </div>
@@ -61,7 +69,7 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
                       {user.email}
                     </p>
                   </div>
-                </div>
+                </button>
               ) : (
                 <Button
                   variant="ghost"
