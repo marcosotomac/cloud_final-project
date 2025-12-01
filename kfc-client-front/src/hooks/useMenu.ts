@@ -35,14 +35,28 @@ export const useMenuByCategory = (category: string) => {
 };
 
 export const useMenuItem = (itemId: string) => {
+  const queryClient = useQueryClient();
+  
   return useQuery({
     queryKey: ["menu", "item", itemId],
     queryFn: async () => {
-      const response = await menuService.getMenuItem(itemId);
-      if (response.success) {
-        return response.data;
+      // First, try to find the item in the cached menu
+      const cachedMenu = queryClient.getQueryData<any[]>(["menu"]);
+      if (cachedMenu) {
+        const item = cachedMenu.find((i: any) => i.itemId === itemId);
+        if (item) return item;
       }
-      throw new Error(response.error);
+      
+      // If not in cache, fetch the full menu and find the item
+      const response = await menuService.getMenu();
+      if (response.success) {
+        const data = response.data as any;
+        const items = data?.items || data || [];
+        const item = items.find((i: any) => i.itemId === itemId);
+        if (item) return item;
+      }
+      
+      throw new Error("Producto no encontrado");
     },
     enabled: !!itemId,
   });

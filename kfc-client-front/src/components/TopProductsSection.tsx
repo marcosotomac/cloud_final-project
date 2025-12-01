@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,17 +19,16 @@ interface MenuItem {
   imageUrl?: string;
 }
 
-const PromosSection = () => {
+const TopProductsSection = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { data: menuItems = [], isLoading, error } = useMenu();
   const { addItem } = useCart();
   const navigate = useNavigate();
 
-  // Get promo products (category "Promos" or items with significant discounts)
-  const promoProducts = (menuItems as MenuItem[]).filter(
-    (item) => item.category?.toLowerCase() === "promos" || 
-              (item.discount && parseInt(item.discount) <= -25)
-  ).slice(0, 10);
+  // Get featured/top products (first 6 from different categories)
+  const topProducts = (menuItems as MenuItem[])
+    .filter((item) => item.oldPrice && item.discount) // Products with discounts
+    .slice(0, 8);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
@@ -56,23 +55,23 @@ const PromosSection = () => {
     toast.success(`${item.name} agregado al carrito`);
   };
 
-  if (error) {
+  if (error || (!isLoading && topProducts.length === 0)) {
     return null;
   }
 
   return (
-    <section className="py-8 bg-white">
+    <section className="py-8 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <h2 className="text-lg sm:text-2xl font-bold flex items-center gap-2">
-            Promos 🔥
+            Lo más top del momento 🔥
           </h2>
           <div className="hidden sm:flex gap-2">
             <Button
               variant="outline"
               size="icon"
               onClick={() => scroll("left")}
-              className="rounded-full"
+              className="rounded-full bg-white"
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
@@ -80,7 +79,7 @@ const PromosSection = () => {
               variant="outline"
               size="icon"
               onClick={() => scroll("right")}
-              className="rounded-full"
+              className="rounded-full bg-white"
             >
               <ChevronRight className="h-5 w-5" />
             </Button>
@@ -98,19 +97,19 @@ const PromosSection = () => {
               </div>
             ))}
           </div>
-        ) : promoProducts.length > 0 ? (
+        ) : (
           <div
             ref={scrollContainerRef}
             className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4 sm:mx-0 sm:px-0"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
-            {promoProducts.map((item) => (
+            {topProducts.map((item) => (
               <Card
                 key={item.itemId}
                 onClick={() => navigate(`/product/${item.itemId}`)}
                 className="flex-shrink-0 w-40 sm:w-48 md:w-56 bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border-0"
               >
-                <div className="relative aspect-square p-3 bg-gradient-to-b from-red-50 to-orange-50">
+                <div className="relative aspect-square p-3 bg-gray-50">
                   <img
                     src={item.imageUrl || "/placeholder.svg"}
                     alt={item.name}
@@ -153,14 +152,10 @@ const PromosSection = () => {
               </Card>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            No hay promociones disponibles en este momento
-          </div>
         )}
       </div>
     </section>
   );
 };
 
-export default PromosSection;
+export default TopProductsSection;

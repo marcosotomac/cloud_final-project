@@ -15,11 +15,21 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import Header from "@/components/Header";
 import SubNav from "@/components/SubNav";
+import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
-import { useMenuItem, useProductReviews } from "@/hooks/useMenu";
+import { useMenuItem, useProductReviews, useMenu } from "@/hooks/useMenu";
 import { toast } from "sonner";
+
+interface AddOnItem {
+  itemId: string;
+  name: string;
+  price: number;
+  imageUrl?: string;
+  selected?: boolean;
+}
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -28,55 +38,76 @@ const ProductDetail = () => {
 
   const { data: product, isLoading, error } = useMenuItem(id || "");
   const { data: reviews } = useProductReviews(id || "");
+  const { data: allMenuItems = [] } = useMenu();
 
   const [quantity, setQuantity] = useState(1);
   const [recipeExpanded, setRecipeExpanded] = useState(true);
   const [complementExpanded, setComplementExpanded] = useState(true);
+  const [extrasExpanded, setExtrasExpanded] = useState(true);
 
   const [recipeOriginal, setRecipeOriginal] = useState(6);
   const [recipeCrispy, setRecipeCrispy] = useState(0);
   const [recipePicante, setRecipePicante] = useState(0);
-  const [selectedComplement, setSelectedComplement] = useState("familiar");
+  const [selectedComplement, setSelectedComplement] = useState("");
+  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
 
-  // Calculate if product has customization
-  const hasRecipeSelection = product?.customizations?.some(
-    (c: any) => c.type === "recipe"
-  );
-  const hasComplementSelection = product?.customizations?.some(
-    (c: any) => c.type === "side"
-  );
-  const requiredPieces =
-    product?.customizations?.find((c: any) => c.type === "recipe")?.required ||
-    0;
+  // Get add-on items from menu (complementos, bebidas, postres)
+  const addOnItems = (allMenuItems as any[]).filter(
+    (item) =>
+      item.category === "Complementos" ||
+      item.category === "Bebidas" ||
+      item.category === "Postres"
+  ).slice(0, 10);
+
+  // Check if this is a "Mega" product that needs customization
+  const isMegaProduct = product?.category === "Megas" || 
+                        product?.name?.toLowerCase().includes("mega") ||
+                        product?.name?.toLowerCase().includes("piezas");
+  
+  const hasPieces = product?.description?.toLowerCase().includes("piezas") ||
+                    product?.description?.toLowerCase().includes("pieza");
+
+  // Extract number of pieces from description
+  const piecesMatch = product?.description?.match(/(\d+)\s*piezas?/i);
+  const requiredPieces = piecesMatch ? parseInt(piecesMatch[1]) : 6;
 
   const totalRecipe = recipeOriginal + recipeCrispy + recipePicante;
-  const recipeComplete = !hasRecipeSelection || totalRecipe === requiredPieces;
-  const complementComplete =
-    !hasComplementSelection || selectedComplement !== "";
+  const recipeComplete = !hasPieces || totalRecipe === requiredPieces;
+
+  // Calculate extras total
+  const extrasTotal = selectedExtras.reduce((total, extraId) => {
+    const item = addOnItems.find((i: any) => i.itemId === extraId);
+    return total + (item?.price || 0);
+  }, 0);
+
+  const handleToggleExtra = (itemId: string) => {
+    if (selectedExtras.includes(itemId)) {
+      setSelectedExtras(selectedExtras.filter((id) => id !== itemId));
+    } else if (selectedExtras.length < 5) {
+      setSelectedExtras([...selectedExtras, itemId]);
+    }
+  };
 
   const handleAddToCart = () => {
     if (!product) return;
 
-    if (hasRecipeSelection && !recipeComplete) {
-      toast.error("Completa tu selección de receta");
+    if (hasPieces && !recipeComplete) {
+      toast.error(`Selecciona exactamente ${requiredPieces} piezas`);
       return;
     }
 
-    if (hasComplementSelection && !complementComplete) {
-      toast.error("Selecciona un complemento");
-      return;
-    }
+    const basePrice = product.price + extrasTotal;
 
     addItem({
       id: product.itemId,
       name: product.name,
-      price: product.price,
+      price: basePrice,
       quantity,
-      image: product.image,
-      recipe: hasRecipeSelection
+      image: product.imageUrl || product.image,
+      recipe: hasPieces
         ? `${recipeOriginal} Original, ${recipeCrispy} Crispy, ${recipePicante} Picante`
         : undefined,
-      complement: hasComplementSelection ? selectedComplement : undefined,
+      complement: selectedComplement || undefined,
     });
 
     toast.success("Producto agregado al carrito");
@@ -85,12 +116,12 @@ const ProductDetail = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gray-50">
         <Header />
         <SubNav />
         <main className="container mx-auto px-4 py-8">
           <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            <Card className="p-6">
+            <Card className="p-6 bg-white">
               <Skeleton className="w-full aspect-square mb-6" />
               <Skeleton className="h-8 w-3/4 mb-2" />
               <Skeleton className="h-4 w-1/2 mb-4" />
@@ -110,7 +141,7 @@ const ProductDetail = () => {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gray-50">
         <Header />
         <SubNav />
         <main className="container mx-auto px-4 py-12">
@@ -123,270 +154,211 @@ const ProductDetail = () => {
     );
   }
 
-  const discount = product.originalPrice
-    ? Math.round((1 - product.price / product.originalPrice) * 100)
-    : 0;
+  const discount = product.oldPrice
+    ? Math.round((1 - product.price / product.oldPrice) * 100)
+    : product.discount ? parseInt(product.discount) : 0;
+
+  const totalPrice = (product.price + extrasTotal) * quantity;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       <Header />
       <SubNav />
 
-      <main className="container mx-auto px-4 py-8">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver
-        </Button>
-
-        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-          {/* Product Image Card */}
-          <Card className="p-6">
-            <div className="relative mb-6">
+      <main className="container mx-auto px-4 py-4 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 max-w-6xl mx-auto">
+          {/* Left Side - Product Image & Info */}
+          <Card className="p-4 sm:p-6 bg-white border-0 shadow-sm">
+            <div className="relative mb-4 sm:mb-6 bg-gradient-to-b from-red-50 to-orange-50 rounded-xl p-2 sm:p-4">
               <img
-                src={product.image || "/placeholder-product.jpg"}
+                src={product.imageUrl || product.image || "/placeholder-product.jpg"}
                 alt={product.name}
-                className="w-full aspect-square object-contain"
+                className="w-full aspect-square object-contain max-h-64 sm:max-h-none"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/placeholder.svg";
+                }}
               />
-              <Badge className="absolute top-4 left-4 bg-accent text-accent-foreground">
-                IMÁGENES REFERENCIALES
-              </Badge>
             </div>
 
-            <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
-            <p className="text-muted-foreground mb-4">{product.description}</p>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2">{product.name}</h1>
+            <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">{product.description}</p>
 
-            {/* Reviews summary */}
-            {reviews && reviews.averageRating && (
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${
-                        i < Math.floor(reviews.averageRating)
-                          ? "text-yellow-400 fill-yellow-400"
-                          : "text-gray-300"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  ({reviews.totalReviews} reseñas)
-                </span>
-              </div>
-            )}
-
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl font-bold">
+            {/* Price */}
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 flex-wrap">
+              <span className="text-xl sm:text-2xl font-bold">
                 S/{product.price.toFixed(2)}
               </span>
-              {product.originalPrice && (
-                <>
-                  <span className="text-muted-foreground line-through">
-                    S/{product.originalPrice.toFixed(2)}
-                  </span>
-                  <span className="text-festive-green font-semibold">
-                    {discount}%
-                  </span>
-                </>
+              {product.oldPrice && (
+                <span className="text-gray-400 line-through text-sm sm:text-base">
+                  S/{product.oldPrice.toFixed(2)}
+                </span>
+              )}
+              {discount > 0 && (
+                <span className="text-green-600 font-semibold text-sm sm:text-base">
+                  {discount}%
+                </span>
               )}
             </div>
 
-            {/* Nutrition info */}
-            {product.nutritionalInfo && (
-              <div className="grid grid-cols-4 gap-2 mb-4 text-center text-xs">
-                <div className="bg-muted p-2 rounded">
-                  <p className="font-semibold">
-                    {product.nutritionalInfo.calories}
-                  </p>
-                  <p className="text-muted-foreground">Calorías</p>
-                </div>
-                <div className="bg-muted p-2 rounded">
-                  <p className="font-semibold">
-                    {product.nutritionalInfo.protein}g
-                  </p>
-                  <p className="text-muted-foreground">Proteína</p>
-                </div>
-                <div className="bg-muted p-2 rounded">
-                  <p className="font-semibold">
-                    {product.nutritionalInfo.carbs}g
-                  </p>
-                  <p className="text-muted-foreground">Carbos</p>
-                </div>
-                <div className="bg-muted p-2 rounded">
-                  <p className="font-semibold">
-                    {product.nutritionalInfo.fat}g
-                  </p>
-                  <p className="text-muted-foreground">Grasa</p>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3 bg-muted rounded-lg p-2">
+            {/* Quantity & Add to Cart */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-1 border rounded-lg">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="h-10 w-10"
+                  className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg"
                 >
-                  <Minus className="h-5 w-5" />
+                  <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
-                <span className="text-xl font-semibold w-12 text-center">
+                <span className="text-lg sm:text-xl font-semibold w-8 sm:w-10 text-center">
                   {quantity}
                 </span>
                 <Button
-                  variant="ghost"
                   size="icon"
                   onClick={() => setQuantity(quantity + 1)}
-                  className="h-10 w-10 bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary text-white hover:bg-primary/90"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </div>
 
               <Button
                 onClick={handleAddToCart}
-                disabled={!recipeComplete || !complementComplete}
-                className="flex-1 h-12 text-base font-semibold"
+                disabled={hasPieces && !recipeComplete}
+                className="flex-1 h-10 sm:h-12 text-sm sm:text-base font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300"
               >
-                Agregar (S/{(product.price * quantity).toFixed(2)})
+                Agregar (S/{totalPrice.toFixed(2)})
               </Button>
             </div>
           </Card>
 
-          {/* Customization Panel */}
-          <div className="space-y-4">
-            {(hasRecipeSelection || hasComplementSelection) && (
-              <h2 className="text-2xl font-bold">Personaliza tu pedido</h2>
-            )}
+          {/* Right Side - Customization Panel */}
+          <div className="space-y-3 sm:space-y-4">
+            <h2 className="text-lg sm:text-xl font-bold">Personaliza tu pedido</h2>
 
-            {/* Recipe Selection */}
-            {hasRecipeSelection && (
-              <Card className="p-6">
+            {/* Recipe Selection - Only for products with pieces */}
+            {hasPieces && (
+              <Card className="bg-white border-0 shadow-sm overflow-hidden">
                 <button
                   onClick={() => setRecipeExpanded(!recipeExpanded)}
-                  className="w-full flex items-center justify-between mb-4"
+                  className="w-full flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50"
                 >
                   <div className="text-left">
-                    <h3 className="font-bold text-lg">Elige la Receta</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {requiredPieces}x Receta
+                    <h3 className="font-bold text-sm sm:text-base">Elige la Receta</h3>
+                    <p className="text-xs sm:text-sm text-gray-500">
+                      {requiredPieces}x Receta {recipeComplete ? "Original" : ""}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2">
                     <Badge
-                      variant={recipeComplete ? "default" : "secondary"}
-                      className="bg-festive-green"
+                      className={`text-xs sm:text-sm ${recipeComplete 
+                        ? "bg-green-100 text-green-700 border-green-200" 
+                        : "bg-gray-100 text-gray-600"}`}
                     >
-                      {recipeComplete
-                        ? "Completado"
-                        : `${totalRecipe}/${requiredPieces}`}
+                      {recipeComplete ? "Completado" : `${totalRecipe}/${requiredPieces}`}
                     </Badge>
-                    {recipeExpanded ? <ChevronUp /> : <ChevronDown />}
+                    {recipeExpanded ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}
                   </div>
                 </button>
 
                 {recipeExpanded && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-muted rounded-full" />
-                        <span className="font-medium">Receta Original</span>
+                  <div className="border-t">
+                    {/* Original */}
+                    <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-full flex items-center justify-center text-lg sm:text-xl">
+                          🍗
+                        </div>
+                        <span className="font-medium text-sm sm:text-base">Receta Original</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="icon"
-                          onClick={() =>
-                            setRecipeOriginal(Math.max(0, recipeOriginal - 1))
-                          }
-                          className="h-8 w-8 rounded-full bg-primary text-primary-foreground"
+                          onClick={() => setRecipeOriginal(Math.max(0, recipeOriginal - 1))}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary text-white hover:bg-primary/90"
+                          disabled={recipeOriginal === 0}
                         >
-                          <Minus className="h-4 w-4" />
+                          <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
-                        <span className="w-8 text-center font-semibold">
+                        <span className="w-6 sm:w-8 text-center font-semibold text-sm sm:text-base">
                           {recipeOriginal}
                         </span>
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() =>
-                            totalRecipe < requiredPieces &&
-                            setRecipeOriginal(recipeOriginal + 1)
-                          }
-                          className="h-8 w-8 rounded-full"
+                          onClick={() => totalRecipe < requiredPieces && setRecipeOriginal(recipeOriginal + 1)}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-full"
                           disabled={totalRecipe >= requiredPieces}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-muted rounded-full" />
-                        <span className="font-medium">Crispy</span>
+                    {/* Crispy */}
+                    <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-full flex items-center justify-center text-lg sm:text-xl">
+                          🍗
+                        </div>
+                        <span className="font-medium text-sm sm:text-base">Crispy</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="icon"
-                          onClick={() =>
-                            setRecipeCrispy(Math.max(0, recipeCrispy - 1))
-                          }
-                          className="h-8 w-8 rounded-full bg-primary text-primary-foreground"
+                          onClick={() => setRecipeCrispy(Math.max(0, recipeCrispy - 1))}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary text-white hover:bg-primary/90"
+                          disabled={recipeCrispy === 0}
                         >
-                          <Minus className="h-4 w-4" />
+                          <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
-                        <span className="w-8 text-center font-semibold">
+                        <span className="w-6 sm:w-8 text-center font-semibold text-sm sm:text-base">
                           {recipeCrispy}
                         </span>
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() =>
-                            totalRecipe < requiredPieces &&
-                            setRecipeCrispy(recipeCrispy + 1)
-                          }
-                          className="h-8 w-8 rounded-full"
+                          onClick={() => totalRecipe < requiredPieces && setRecipeCrispy(recipeCrispy + 1)}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-full"
                           disabled={totalRecipe >= requiredPieces}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-muted rounded-full" />
-                        <span className="font-medium">Picante 🔥</span>
+                    {/* Picante */}
+                    <div className="flex items-center justify-between p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-full flex items-center justify-center text-lg sm:text-xl">
+                          🌶️
+                        </div>
+                        <span className="font-medium text-sm sm:text-base">Picante</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="icon"
-                          onClick={() =>
-                            setRecipePicante(Math.max(0, recipePicante - 1))
-                          }
-                          className="h-8 w-8 rounded-full bg-primary text-primary-foreground"
+                          onClick={() => setRecipePicante(Math.max(0, recipePicante - 1))}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary text-white hover:bg-primary/90"
+                          disabled={recipePicante === 0}
                         >
-                          <Minus className="h-4 w-4" />
+                          <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
-                        <span className="w-8 text-center font-semibold">
+                        <span className="w-6 sm:w-8 text-center font-semibold text-sm sm:text-base">
                           {recipePicante}
                         </span>
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() =>
-                            totalRecipe < requiredPieces &&
-                            setRecipePicante(recipePicante + 1)
-                          }
-                          className="h-8 w-8 rounded-full"
+                          onClick={() => totalRecipe < requiredPieces && setRecipePicante(recipePicante + 1)}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-full"
                           disabled={totalRecipe >= requiredPieces}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </div>
@@ -396,21 +368,21 @@ const ProductDetail = () => {
             )}
 
             {/* Complement Selection */}
-            {hasComplementSelection && (
-              <Card className="p-6">
+            {(isMegaProduct || product.description?.toLowerCase().includes("complemento")) && (
+              <Card className="bg-white border-0 shadow-sm overflow-hidden">
                 <button
                   onClick={() => setComplementExpanded(!complementExpanded)}
-                  className="w-full flex items-center justify-between mb-4"
+                  className="w-full flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50"
                 >
                   <div className="text-left">
-                    <h3 className="font-bold text-lg">Elige tu complemento</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Elige 1 opción
-                    </p>
+                    <h3 className="font-bold text-sm sm:text-base">Elige tu complemento</h3>
+                    <p className="text-xs sm:text-sm text-gray-500">Elige 1 opción</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">Requerido</Badge>
-                    {complementExpanded ? <ChevronUp /> : <ChevronDown />}
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Badge variant="outline" className="text-gray-600 text-xs sm:text-sm">
+                      Requerido
+                    </Badge>
+                    {complementExpanded ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}
                   </div>
                 </button>
 
@@ -418,91 +390,115 @@ const ProductDetail = () => {
                   <RadioGroup
                     value={selectedComplement}
                     onValueChange={setSelectedComplement}
+                    className="border-t"
                   >
-                    <div className="space-y-3">
-                      {(
-                        product.customizations?.find(
-                          (c: any) => c.type === "side"
-                        )?.options || [
-                          {
-                            id: "familiar",
-                            name: "Papa Familiar",
-                            extraPrice: 0,
-                          },
-                          {
-                            id: "super",
-                            name: "Papa Super Familiar",
-                            extraPrice: 6.9,
-                          },
-                          {
-                            id: "ensalada",
-                            name: "Ensalada Familiar",
-                            extraPrice: 0,
-                          },
-                          { id: "pure", name: "Puré Familiar", extraPrice: 0 },
-                        ]
-                      ).map((option: any) => (
-                        <div
-                          key={option.id}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-muted rounded-full" />
-                            <div className="flex flex-col">
-                              <Label
-                                htmlFor={option.id}
-                                className="font-medium cursor-pointer"
-                              >
-                                {option.name}
-                              </Label>
-                              {option.extraPrice > 0 && (
-                                <span className="text-sm text-muted-foreground">
-                                  + S/{option.extraPrice.toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <RadioGroupItem value={option.id} id={option.id} />
+                    <div className="flex items-center justify-between p-3 sm:p-4 border-b hover:bg-gray-50">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-50 rounded-lg overflow-hidden">
+                          <img src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/papa-familiar-202506160431489482.jpg" alt="Papa Familiar" className="w-full h-full object-cover" />
                         </div>
-                      ))}
+                        <span className="font-medium text-sm sm:text-base">Papa Familiar</span>
+                      </div>
+                      <RadioGroupItem value="papa-familiar" id="papa-familiar" />
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 sm:p-4 border-b hover:bg-gray-50">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-50 rounded-lg overflow-hidden">
+                          <img src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/papa-super-familiar-202506160431519379.jpg" alt="Papa Super Familiar" className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                          <span className="font-medium text-sm sm:text-base">Papa Super Familiar</span>
+                          <p className="text-xs sm:text-sm text-gray-500">+ S/6.90</p>
+                        </div>
+                      </div>
+                      <RadioGroupItem value="papa-super" id="papa-super" />
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 sm:p-4 border-b hover:bg-gray-50">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-50 rounded-lg overflow-hidden">
+                          <img src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/ensalada-familiar-202506160431528586.jpg" alt="Ensalada Familiar" className="w-full h-full object-cover" />
+                        </div>
+                        <span className="font-medium text-sm sm:text-base">Ensalada Familiar</span>
+                      </div>
+                      <RadioGroupItem value="ensalada" id="ensalada" />
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-50 rounded-lg overflow-hidden">
+                          <img src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/pure-familiar-202506201432024958.jpg" alt="Puré Familiar" className="w-full h-full object-cover" />
+                        </div>
+                        <span className="font-medium text-sm sm:text-base">Puré Familiar</span>
+                      </div>
+                      <RadioGroupItem value="pure" id="pure" />
                     </div>
                   </RadioGroup>
                 )}
               </Card>
             )}
 
-            {/* If no customization, show product details */}
-            {!hasRecipeSelection && !hasComplementSelection && (
-              <Card className="p-6">
-                <h3 className="font-bold text-lg mb-4">
-                  Detalles del producto
-                </h3>
-                <p className="text-muted-foreground">{product.description}</p>
-                {product.ingredients && (
-                  <div className="mt-4">
-                    <p className="font-medium mb-2">Ingredientes:</p>
-                    <p className="text-sm text-muted-foreground">
-                      {product.ingredients.join(", ")}
-                    </p>
-                  </div>
-                )}
-                {product.allergens && product.allergens.length > 0 && (
-                  <div className="mt-4">
-                    <p className="font-medium mb-2">Alérgenos:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {product.allergens.map((allergen: string) => (
-                        <Badge key={allergen} variant="outline">
-                          {allergen}
-                        </Badge>
-                      ))}
+            {/* Extras / Add-ons */}
+            <Card className="bg-white border-0 shadow-sm overflow-hidden">
+              <button
+                onClick={() => setExtrasExpanded(!extrasExpanded)}
+                className="w-full flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50"
+              >
+                <div className="text-left">
+                  <h3 className="font-bold text-sm sm:text-base">Agranda tu Mega</h3>
+                  <p className="text-xs sm:text-sm text-gray-500">Selecciona hasta 5 artículos</p>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Badge variant="outline" className="text-gray-600 text-xs sm:text-sm">
+                    Opcional
+                  </Badge>
+                  {extrasExpanded ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}
+                </div>
+              </button>
+
+              {extrasExpanded && (
+                <div className="border-t max-h-72 sm:max-h-96 overflow-y-auto">
+                  {addOnItems.map((item: any) => (
+                    <div
+                      key={item.itemId}
+                      className="flex items-center justify-between p-3 sm:p-4 border-b hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                          <img
+                            src={item.imageUrl || "/placeholder.svg"}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "/placeholder.svg";
+                            }}
+                          />
+                        </div>
+                        <span className="font-medium text-xs sm:text-sm truncate">{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                        <span className="text-xs sm:text-sm text-gray-600">+ S/{item.price.toFixed(2)}</span>
+                        <Button
+                          variant={selectedExtras.includes(item.itemId) ? "default" : "outline"}
+                          size="icon"
+                          onClick={() => handleToggleExtra(item.itemId)}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-full"
+                          disabled={!selectedExtras.includes(item.itemId) && selectedExtras.length >= 5}
+                        >
+                          <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </Card>
-            )}
+                  ))}
+                </div>
+              )}
+            </Card>
           </div>
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 };

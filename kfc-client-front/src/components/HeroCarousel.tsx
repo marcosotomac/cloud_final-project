@@ -54,9 +54,9 @@ const HeroCarousel = () => {
   }
 
   return (
-    <div className="relative w-full bg-gradient-hero overflow-hidden rounded-2xl shadow-lg">
+    <div className="relative w-full bg-gradient-hero overflow-hidden rounded-xl sm:rounded-2xl shadow-lg">
       {/* Slides */}
-      <div className="relative aspect-[21/9] md:aspect-[21/7]">
+      <div className="relative aspect-[16/9] sm:aspect-[21/9] md:aspect-[21/7]">
         {slides.map((slide, index) => (
           <div
             key={slide.id}
@@ -75,11 +75,11 @@ const HeroCarousel = () => {
             {/* Optional overlay with text */}
             {slide.title && (
               <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white text-center p-4">
-                <h2 className="text-3xl md:text-5xl font-bold mb-2">
+                <h2 className="text-xl sm:text-3xl md:text-5xl font-bold mb-1 sm:mb-2">
                   {slide.title}
                 </h2>
                 {slide.description && (
-                  <p className="text-lg md:text-xl max-w-2xl">
+                  <p className="text-sm sm:text-lg md:text-xl max-w-2xl">
                     {slide.description}
                   </p>
                 )}
@@ -96,29 +96,29 @@ const HeroCarousel = () => {
             variant="ghost"
             size="icon"
             onClick={prevSlide}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-background/20 hover:bg-background/40 text-primary-foreground backdrop-blur-sm h-12 w-12 rounded-full"
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-background/20 hover:bg-background/40 text-primary-foreground backdrop-blur-sm h-8 w-8 sm:h-12 sm:w-12 rounded-full"
           >
-            <ChevronLeft className="h-8 w-8" />
+            <ChevronLeft className="h-5 w-5 sm:h-8 sm:w-8" />
           </Button>
 
           <Button
             variant="ghost"
             size="icon"
             onClick={nextSlide}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-background/20 hover:bg-background/40 text-primary-foreground backdrop-blur-sm h-12 w-12 rounded-full"
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-background/20 hover:bg-background/40 text-primary-foreground backdrop-blur-sm h-8 w-8 sm:h-12 sm:w-12 rounded-full"
           >
-            <ChevronRight className="h-8 w-8" />
+            <ChevronRight className="h-5 w-5 sm:h-8 sm:w-8" />
           </Button>
 
           {/* Pagination Dots */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+          <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2">
             {slides.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`w-2.5 h-2.5 rounded-full transition-all ${
+                className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all ${
                   index === currentSlide
-                    ? "bg-primary-foreground w-8"
+                    ? "bg-primary-foreground w-6 sm:w-8"
                     : "bg-primary-foreground/50 hover:bg-primary-foreground/75"
                 }`}
                 aria-label={`Go to slide ${index + 1}`}
