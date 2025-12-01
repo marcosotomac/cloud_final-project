@@ -12,6 +12,9 @@ from .dynamodb import get_connections_table, query_items, decimal_to_float
 def get_api_gateway_management_client():
     """Get API Gateway Management API client"""
     endpoint = os.environ.get('WEBSOCKET_API_ENDPOINT')
+    if not endpoint:
+        print("WARNING: WEBSOCKET_API_ENDPOINT not configured")
+        return None
     return boto3.client(
         'apigatewaymanagementapi',
         endpoint_url=endpoint
@@ -31,17 +34,21 @@ def send_to_connection(connection_id: str, data: Dict[str, Any]) -> bool:
     """
     try:
         client = get_api_gateway_management_client()
+        if not client:
+            print(f"WebSocket client not available, cannot send to {connection_id}")
+            return False
         client.post_to_connection(
             ConnectionId=connection_id,
             Data=json.dumps(data).encode('utf-8')
         )
         return True
-    except client.exceptions.GoneException:
-        # Connection no longer exists, clean it up
-        cleanup_connection(connection_id)
-        return False
     except Exception as e:
-        print(f"Error sending to connection {connection_id}: {str(e)}")
+        error_str = str(e)
+        if 'GoneException' in error_str or 'Gone' in error_str:
+            # Connection no longer exists, clean it up
+            cleanup_connection(connection_id)
+        else:
+            print(f"Error sending to connection {connection_id}: {error_str}")
         return False
 
 
@@ -113,7 +120,7 @@ def broadcast_order_update(
         Broadcast result
     """
     message = {
-        'type': 'ORDER_UPDATE',
+        'type': 'order_update',
         'payload': {
             'orderId': order_id,
             'status': status,
@@ -122,7 +129,9 @@ def broadcast_order_update(
         }
     }
 
-    return broadcast_to_tenant(tenant_id, message)
+    result = broadcast_to_tenant(tenant_id, message)
+    print(f"WebSocket broadcast result for order {order_id}: {result}")
+    return result
 
 
 def broadcast_new_order(tenant_id: str, order_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -137,14 +146,16 @@ def broadcast_new_order(tenant_id: str, order_data: Dict[str, Any]) -> Dict[str,
         Broadcast result
     """
     message = {
-        'type': 'NEW_ORDER',
+        'type': 'new_order',
         'payload': {
             'order': decimal_to_float(order_data),
             'timestamp': order_data.get('createdAt', '')
         }
     }
 
-    return broadcast_to_tenant(tenant_id, message)
+    result = broadcast_to_tenant(tenant_id, message)
+    print(f"WebSocket broadcast new order: {result}")
+    return result
 
 
 def broadcast_dashboard_update(
@@ -162,7 +173,7 @@ def broadcast_dashboard_update(
         Broadcast result
     """
     message = {
-        'type': 'DASHBOARD_UPDATE',
+        'type': 'dashboard_update',
         'payload': dashboard_data
     }
 

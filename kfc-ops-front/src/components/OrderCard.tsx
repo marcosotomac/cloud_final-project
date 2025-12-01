@@ -22,28 +22,49 @@ interface OrderCardProps {
   disabled?: boolean;
 }
 
+// Backend status labels
+const apiStatusLabels: Record<string, string> = {
+  PENDING: "Pendiente",
+  RECEIVED: "Recibido",
+  COOKING: "En Cocina",
+  COOKED: "Listo",
+  PACKED: "Empacado",
+  DELIVERING: "En Delivery",
+  DELIVERED: "Entregado",
+  COMPLETED: "Completado",
+};
+
+// Next status action labels
+const nextActionLabels: Record<string, string> = {
+  PENDING: "Aceptar",
+  RECEIVED: "Cocinar",
+  COOKING: "Listo",
+  COOKED: "Empacar",
+  PACKED: "Enviar",
+  DELIVERING: "Completar",
+};
+
 const statusConfig = {
   pending: {
     label: "Pendiente",
     color: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
-    next: "kitchen" as const,
   },
   kitchen: {
     label: "En Cocina",
     color: "bg-orange-500/20 text-orange-700 dark:text-orange-400",
-    next: "packing" as const,
   },
   packing: {
     label: "Empacando",
     color: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
-    next: "delivery" as const,
   },
   delivery: {
     label: "En Delivery",
     color: "bg-green-500/20 text-green-700 dark:text-green-400",
-    next: "delivery" as const, // reutilizamos para marcar completada
   },
 };
+
+// Status that should NOT show "Siguiente" button
+const finalStatuses = ["COMPLETED", "DELIVERED"];
 
 export const OrderCard = ({
   order,
@@ -71,13 +92,20 @@ export const OrderCard = ({
   const minutesAgo = Math.floor(
     (Date.now() - order.createdAt.getTime()) / 60000
   );
-  const normalizedApiStatus = (order.apiStatus || order.status).toLowerCase();
-  const isFinalStatus =
-    normalizedApiStatus === "completed" || normalizedApiStatus === "delivered";
+
+  // Normalize API status to uppercase for comparison
+  const normalizedApiStatus = (order.apiStatus || "").toUpperCase();
+  const isFinalStatus = finalStatuses.includes(normalizedApiStatus);
+
+  // Get display label for API status
+  const apiStatusLabel = apiStatusLabels[normalizedApiStatus] || config.label;
+  
+  // Get button label for next action
+  const nextActionLabel = nextActionLabels[normalizedApiStatus] || "Siguiente";
 
   const handleNextStatus = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!config.next || isUpdating || isFinalStatus || disabled) return;
+    if (isUpdating || isFinalStatus || disabled) return;
 
     setIsUpdating(true);
     try {
@@ -97,13 +125,16 @@ export const OrderCard = ({
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h3 className="font-bold text-lg">{order.id}</h3>
+          <h3 className="font-bold text-lg truncate max-w-[180px]">{order.id.slice(-8)}</h3>
           <div className="flex items-center text-sm text-muted-foreground mt-1">
             <User className="w-3 h-3 mr-1" />
             {order.customer}
           </div>
         </div>
-        <Badge className={config.color}>{config.label}</Badge>
+        <div className="flex flex-col items-end gap-1">
+          <Badge className={config.color}>{apiStatusLabel}</Badge>
+          <span className="text-[10px] text-muted-foreground">{normalizedApiStatus}</span>
+        </div>
       </div>
 
       <div className="space-y-2 mb-3">
@@ -138,7 +169,7 @@ export const OrderCard = ({
             <Clock className="w-3 h-3 mr-1" />
             {minutesAgo} min
           </div>
-          {config.next && !isFinalStatus && (
+          {!isFinalStatus && (
             <Button
               size="sm"
               onClick={handleNextStatus}
@@ -148,7 +179,7 @@ export const OrderCard = ({
               {isUpdating ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
-                "Siguiente"
+                nextActionLabel
               )}
             </Button>
           )}

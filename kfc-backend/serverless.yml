@@ -49,6 +49,8 @@ provider:
     ORDERS_QUEUE_URL: !Ref OrdersQueue
     NOTIFICATIONS_TOPIC_ARN: !Ref NotificationsTopic
     ASSETS_BUCKET: kfc-assets-${self:provider.stage}-595645243021
+    WEBSOCKET_API_ENDPOINT:
+      Fn::Sub: "https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
 
 custom:
   pythonRequirements:

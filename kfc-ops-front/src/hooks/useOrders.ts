@@ -11,7 +11,8 @@ export const useOrders = (filters?: { status?: string; date?: string }) => {
       }
       throw new Error(response.error);
     },
-    refetchInterval: 15000, // Refresh every 15 seconds
+    refetchInterval: 10000, // Refresh every 10 seconds for better sync
+    staleTime: 5000, // Consider data stale after 5 seconds
   });
 };
 
@@ -55,7 +56,7 @@ export const useReadyOrders = () => {
   return useOrders({ status: "ready" });
 };
 
-// Workflow mutations
+// Workflow mutations - simplified for reliability - simplified for reliability
 export const useTakeOrder = () => {
   const queryClient = useQueryClient();
 
@@ -63,25 +64,14 @@ export const useTakeOrder = () => {
     mutationFn: async (orderId: string) => {
       const response = await ordersService.takeOrder(orderId);
       if (response.success) {
-        return response.data;
+        return { orderId, status: response.data?.status || "RECEIVED", data: response.data };
       }
-      throw new Error(response.error);
+      throw new Error(response.error || "Error al tomar orden");
     },
-    onSuccess: (data, orderId) => {
-      const newStatus = data?.status || "RECEIVED";
-      queryClient.setQueryData(["orders", undefined], (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((o) =>
-          (o.orderId || o.id) === orderId
-            ? { ...o, status: newStatus, apiStatus: newStatus }
-            : o
-        );
-      });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-    onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    onSuccess: async () => {
+      // Force immediate refetch of all order-related queries
+      await queryClient.refetchQueries({ queryKey: ["orders"] });
+      await queryClient.refetchQueries({ queryKey: ["dashboard"] });
     },
   });
 };
@@ -93,25 +83,13 @@ export const useStartCooking = () => {
     mutationFn: async (orderId: string) => {
       const response = await ordersService.startCooking(orderId);
       if (response.success) {
-        return response.data;
+        return { orderId, status: response.data?.status || "COOKING", data: response.data };
       }
-      throw new Error(response.error);
+      throw new Error(response.error || "Error al iniciar cocina");
     },
-    onSuccess: (data, orderId) => {
-      const newStatus = data?.status || "COOKING";
-      queryClient.setQueryData(["orders", undefined], (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((o) =>
-          (o.orderId || o.id) === orderId
-            ? { ...o, status: newStatus, apiStatus: newStatus }
-            : o
-        );
-      });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-    onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["orders"] });
+      await queryClient.refetchQueries({ queryKey: ["dashboard"] });
     },
   });
 };
@@ -123,25 +101,13 @@ export const useMarkCooked = () => {
     mutationFn: async (orderId: string) => {
       const response = await ordersService.markCooked(orderId);
       if (response.success) {
-        return response.data;
+        return { orderId, status: response.data?.status || "COOKED", data: response.data };
       }
-      throw new Error(response.error);
+      throw new Error(response.error || "Error al marcar como cocinado");
     },
-    onSuccess: (data, orderId) => {
-      const newStatus = data?.status || "COOKED";
-      queryClient.setQueryData(["orders", undefined], (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((o) =>
-          (o.orderId || o.id) === orderId
-            ? { ...o, status: newStatus, apiStatus: newStatus }
-            : o
-        );
-      });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-    onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["orders"] });
+      await queryClient.refetchQueries({ queryKey: ["dashboard"] });
     },
   });
 };
@@ -153,25 +119,13 @@ export const usePackOrder = () => {
     mutationFn: async (orderId: string) => {
       const response = await ordersService.packOrder(orderId);
       if (response.success) {
-        return response.data;
+        return { orderId, status: response.data?.status || "PACKED", data: response.data };
       }
-      throw new Error(response.error);
+      throw new Error(response.error || "Error al empacar orden");
     },
-    onSuccess: (data, orderId) => {
-      const newStatus = data?.status || "PACKED";
-      queryClient.setQueryData(["orders", undefined], (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((o) =>
-          (o.orderId || o.id) === orderId
-            ? { ...o, status: newStatus, apiStatus: newStatus }
-            : o
-        );
-      });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-    onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["orders"] });
+      await queryClient.refetchQueries({ queryKey: ["dashboard"] });
     },
   });
 };
@@ -183,25 +137,13 @@ export const useStartDelivery = () => {
     mutationFn: async (orderId: string) => {
       const response = await ordersService.startDelivery(orderId);
       if (response.success) {
-        return response.data;
+        return { orderId, status: response.data?.status || "DELIVERING", data: response.data };
       }
-      throw new Error(response.error);
+      throw new Error(response.error || "Error al iniciar delivery");
     },
-    onSuccess: (data, orderId) => {
-      const newStatus = data?.status || "DELIVERING";
-      queryClient.setQueryData(["orders", undefined], (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((o) =>
-          (o.orderId || o.id) === orderId
-            ? { ...o, status: newStatus, apiStatus: newStatus }
-            : o
-        );
-      });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-    onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["orders"] });
+      await queryClient.refetchQueries({ queryKey: ["dashboard"] });
     },
   });
 };
@@ -213,25 +155,13 @@ export const useCompleteOrder = () => {
     mutationFn: async (orderId: string) => {
       const response = await ordersService.completeOrder(orderId);
       if (response.success) {
-        return response.data;
+        return { orderId, status: response.data?.status || "COMPLETED", data: response.data };
       }
-      throw new Error(response.error);
+      throw new Error(response.error || "Error al completar orden");
     },
-    onSuccess: (data, orderId) => {
-      const newStatus = data?.status || "COMPLETED";
-      queryClient.setQueryData(["orders", undefined], (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((o) =>
-          (o.orderId || o.id) === orderId
-            ? { ...o, status: newStatus, apiStatus: newStatus }
-            : o
-        );
-      });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-    onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["orders"] });
+      await queryClient.refetchQueries({ queryKey: ["dashboard"] });
     },
   });
 };

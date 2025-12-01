@@ -12,7 +12,8 @@ export const useDashboard = () => {
       }
       throw new Error(response.error);
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 10000, // Refresh every 10 seconds
+    staleTime: 5000,
   });
 };
 
@@ -26,7 +27,8 @@ export const useRecentOrders = (limit: number = 10) => {
       }
       throw new Error(response.error);
     },
-    refetchInterval: 15000, // Refresh every 15 seconds
+    refetchInterval: 10000, // Refresh every 10 seconds
+    staleTime: 5000,
   });
 };
 
@@ -40,7 +42,8 @@ export const useWorkflowStats = () => {
       }
       throw new Error(response.error);
     },
-    refetchInterval: 15000, // Refresh every 15 seconds
+    refetchInterval: 10000,
+    staleTime: 5000,
   });
 };
 
@@ -54,7 +57,8 @@ export const useQueueStats = () => {
       }
       throw new Error(response.error);
     },
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: 10000,
+    staleTime: 5000,
   });
 };
 
@@ -69,5 +73,6 @@ export const useRealtimeMetrics = () => {
       throw new Error(response.error);
     },
     refetchInterval: 10000,
+    staleTime: 5000,
   });
 };

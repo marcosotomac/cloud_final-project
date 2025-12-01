@@ -26,25 +26,18 @@ import { toast } from "sonner";
 // Map API status to UI status
 type UIStatus = "pending" | "kitchen" | "packing" | "delivery";
 const mapApiStatusToUI = (apiStatus: string): UIStatus => {
-  const normalized = (apiStatus || "")
-    .toLowerCase()
-    .replace(/_/g, "-")
-    .replace(/\s+/g, "-");
+  const normalized = (apiStatus || "").toUpperCase();
   const statusMap: Record<string, UIStatus> = {
-    pending: "pending",
-    confirmed: "kitchen",
-    received: "kitchen",
-    preparing: "kitchen",
-    cooking: "kitchen",
-    cooked: "packing",
-    ready: "packing",
-    packing: "packing",
-    packed: "delivery",
-    "ready-for-delivery": "delivery",
-    "out-for-delivery": "delivery",
-    delivering: "delivery",
-    delivered: "delivery",
-    completed: "delivery",
+    PENDING: "pending",
+    RECEIVED: "kitchen",
+    COOKING: "kitchen",
+    COOKED: "packing",
+    PACKING: "packing",
+    PACKED: "delivery",
+    READY_FOR_DELIVERY: "delivery",
+    DELIVERING: "delivery",
+    DELIVERED: "delivery",
+    COMPLETED: "delivery",
   };
   return statusMap[normalized] || "pending";
 };
@@ -94,7 +87,8 @@ const Orders = () => {
         ["orders", undefined],
         (old: any[] | undefined) => {
           const orders = old ? [...old] : [];
-          const id = (updatedOrder as any)?.orderId || (updatedOrder as any)?.id;
+          const id =
+            (updatedOrder as any)?.orderId || (updatedOrder as any)?.id;
           const existingIndex = orders.findIndex(
             (o: any) => (o.orderId || o.id) === id
           );
@@ -155,50 +149,59 @@ const Orders = () => {
   }, [apiOrders]);
 
   const handleStatusChange = async (orderId: string) => {
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return;
+    // Get fresh order state from apiOrders (not transformed)
+    const apiOrder = apiOrders.find(
+      (o: any) => (o.orderId || o.id) === orderId
+    );
+    if (!apiOrder) {
+      toast.error("Orden no encontrada");
+      return;
+    }
+
+    // Normalize to uppercase to match backend enum
+    const backendStatus = ((apiOrder as any).status || "").toUpperCase();
+    console.log(`[Workflow] Order ${orderId} current status: ${backendStatus}`);
 
     try {
-      const backendStatus = (order.apiStatus || order.status || "")
-        .toLowerCase()
-        .replace(/-/g, "_");
-
-      if (backendStatus === "pending") {
-        await takeOrder.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} aceptada`);
-      } else if (backendStatus === "received" || backendStatus === "confirmed") {
-        await startCooking.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} en cocina`);
-      } else if (backendStatus === "cooking" || backendStatus === "preparing") {
-        await finishCooking.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} lista para empaque`);
-      } else if (backendStatus === "cooked" || backendStatus === "ready") {
-        await packOrder.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} empacada`);
-      } else if (backendStatus === "packed") {
-        await startDelivery.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} en camino`);
-      } else if (
-        backendStatus === "delivering" ||
-        backendStatus === "out_for_delivery"
-      ) {
-        await completeOrder.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} completada`);
+      // Flow: PENDING -> RECEIVED -> COOKING -> COOKED -> PACKED -> DELIVERING -> COMPLETED
+      let result;
+      if (backendStatus === "PENDING") {
+        result = await takeOrder.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} aceptada → RECEIVED`);
+      } else if (backendStatus === "RECEIVED") {
+        result = await startCooking.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} en cocina → COOKING`);
+      } else if (backendStatus === "COOKING") {
+        result = await finishCooking.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} lista → COOKED`);
+      } else if (backendStatus === "COOKED") {
+        result = await packOrder.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} empacada → PACKED`);
+      } else if (backendStatus === "PACKED") {
+        result = await startDelivery.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} en camino → DELIVERING`);
+      } else if (backendStatus === "DELIVERING") {
+        result = await completeOrder.mutateAsync(orderId);
+        toast.success(`Orden ${orderId} completada → COMPLETED`);
+      } else if (backendStatus === "COMPLETED" || backendStatus === "DELIVERED") {
+        toast.info(`Orden ${orderId} ya está completada`);
+        return;
+      } else {
+        toast.warning(`Estado desconocido: ${backendStatus}`);
+        return;
       }
+
+      console.log(`[Workflow] Order ${orderId} transitioned to:`, result?.status);
 
       addNotification({
         title: "Estado Actualizado",
-        message: `Orden ${orderId} actualizada`,
+        message: `Orden ${orderId} actualizada a ${result?.status || "siguiente estado"}`,
         type: "order",
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Error al actualizar orden"
-      );
-      // Re-sync from backend if something failed
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      const errorMsg = error?.message || "Error al actualizar orden";
+      toast.error(errorMsg);
+      console.error("[Workflow] Error:", error);
     }
   };
 
