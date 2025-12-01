@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, User, Package, Loader2 } from "lucide-react";
-import { useSortable } from "@dnd-kit/sortable";
+import { Clock, User, Package, Loader2, GripVertical } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
 
@@ -73,19 +73,13 @@ export const OrderCard = ({
 }: OrderCardProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: order.id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({ id: order.id });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 1,
   };
 
   const config = statusConfig[order.status];
@@ -99,7 +93,7 @@ export const OrderCard = ({
 
   // Get display label for API status
   const apiStatusLabel = apiStatusLabels[normalizedApiStatus] || config.label;
-  
+
   // Get button label for next action
   const nextActionLabel = nextActionLabels[normalizedApiStatus] || "Siguiente";
 
@@ -120,20 +114,32 @@ export const OrderCard = ({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      className="p-4 cursor-grab active:cursor-grabbing hover:shadow-lg transition-shadow"
+      className="p-4 hover:shadow-lg transition-shadow"
     >
       <div className="flex items-start justify-between mb-3">
-        <div>
-          <h3 className="font-bold text-lg truncate max-w-[180px]">{order.id.slice(-8)}</h3>
-          <div className="flex items-center text-sm text-muted-foreground mt-1">
-            <User className="w-3 h-3 mr-1" />
-            {order.customer}
+        <div className="flex items-start gap-2">
+          {/* Drag handle - only this part is draggable */}
+          <div
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-1 -ml-2 text-muted-foreground hover:text-foreground"
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg truncate max-w-[180px]">
+              {order.id.slice(-8)}
+            </h3>
+            <div className="flex items-center text-sm text-muted-foreground mt-1">
+              <User className="w-3 h-3 mr-1" />
+              {order.customer}
+            </div>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
           <Badge className={config.color}>{apiStatusLabel}</Badge>
-          <span className="text-[10px] text-muted-foreground">{normalizedApiStatus}</span>
+          <span className="text-[10px] text-muted-foreground">
+            {normalizedApiStatus}
+          </span>
         </div>
       </div>
 

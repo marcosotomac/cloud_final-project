@@ -14,6 +14,7 @@ interface CartItem {
   image: string;
   recipe?: string;
   complement?: string;
+  stock?: number; // -1 = ilimitado
 }
 
 interface CartContextType {
@@ -75,7 +76,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalPrice = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
 
   return (
     <CartContext.Provider

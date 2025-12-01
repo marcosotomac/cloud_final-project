@@ -5,9 +5,12 @@ interface MenuItemCreateData {
   name: string;
   description: string;
   price: number;
+  oldPrice?: number | null;
+  discount?: string | null;
   category: string;
-  image?: string;
+  imageUrl?: string;
   isAvailable?: boolean;
+  stock?: number;
   ingredients?: string[];
   preparationTime?: number;
   nutritionalInfo?: Record<string, number>;

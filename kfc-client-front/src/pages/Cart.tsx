@@ -1,15 +1,35 @@
-import { ShoppingCart, Trash2, Minus, Plus } from "lucide-react";
+import { ShoppingCart, Trash2, Minus, Plus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Cart = () => {
   const { items, totalPrice, updateQuantity, removeItem, clearCart } =
     useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  const handleUpdateQuantity = (
+    item: (typeof items)[0],
+    newQuantity: number
+  ) => {
+    // Validar stock si no es ilimitado
+    if (
+      item.stock !== undefined &&
+      item.stock !== -1 &&
+      newQuantity > item.stock
+    ) {
+      toast.error(
+        `Solo hay ${item.stock} unidades disponibles de ${item.name}`
+      );
+      return;
+    }
+    updateQuantity(item.id, newQuantity);
+  };
 
   const handleCheckout = () => {
     if (!isAuthenticated) {
@@ -129,7 +149,7 @@ const Cart = () => {
                         variant="outline"
                         size="icon"
                         onClick={() =>
-                          updateQuantity(item.id, item.quantity - 1)
+                          handleUpdateQuantity(item, item.quantity - 1)
                         }
                         className="h-8 w-8"
                       >
@@ -142,12 +162,29 @@ const Cart = () => {
                         variant="outline"
                         size="icon"
                         onClick={() =>
-                          updateQuantity(item.id, item.quantity + 1)
+                          handleUpdateQuantity(item, item.quantity + 1)
+                        }
+                        disabled={
+                          item.stock !== undefined &&
+                          item.stock !== -1 &&
+                          item.quantity >= item.stock
                         }
                         className="h-8 w-8"
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
+                      {/* Stock warning */}
+                      {item.stock !== undefined &&
+                        item.stock !== -1 &&
+                        item.quantity >= item.stock && (
+                          <Badge
+                            variant="outline"
+                            className="ml-2 text-yellow-600 border-yellow-500"
+                          >
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            Máx. stock
+                          </Badge>
+                        )}
                     </div>
                     <p className="text-lg font-bold">
                       S/{(item.price * item.quantity).toFixed(2)}

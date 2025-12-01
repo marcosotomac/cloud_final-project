@@ -1,12 +1,17 @@
 import { NavLink } from "./NavLink";
-import { LayoutDashboard, ShoppingCart, Package, UtensilsCrossed, Menu, Users } from "lucide-react";
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  UtensilsCrossed,
+  Menu,
+  Users,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/orders", icon: ShoppingCart, label: "Pedidos" },
-  { to: "/inventory", icon: Package, label: "Inventario" },
   { to: "/menu", icon: UtensilsCrossed, label: "Menú" },
   { to: "/staff", icon: Users, label: "Staff" },
 ];
@@ -18,7 +23,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <aside className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
         <div className="flex flex-col flex-grow border-r border-border bg-card overflow-y-auto">
           <div className="flex items-center justify-center h-16 px-4 border-b border-border bg-primary">
-            <h1 className="text-2xl font-bold text-primary-foreground">KFC Manager</h1>
+            <h1 className="text-2xl font-bold text-primary-foreground">
+              KFC Manager
+            </h1>
           </div>
           <nav className="flex-1 px-4 py-6 space-y-2">
             {navItems.map((item) => (
@@ -47,7 +54,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
             <div className="flex items-center justify-center h-16 px-4 border-b border-border bg-primary">
-              <h1 className="text-xl font-bold text-primary-foreground">KFC Manager</h1>
+              <h1 className="text-xl font-bold text-primary-foreground">
+                KFC Manager
+              </h1>
             </div>
             <nav className="px-4 py-6 space-y-2">
               {navItems.map((item) => (
@@ -68,9 +77,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Main Content */}
       <div className="md:pl-64 pt-16 md:pt-0">
-        <main className="p-6 md:p-8">
-          {children}
-        </main>
+        <main className="p-6 md:p-8">{children}</main>
       </div>
     </div>
   );

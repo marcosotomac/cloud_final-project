@@ -35,7 +35,8 @@ def send_to_connection(connection_id: str, data: Dict[str, Any]) -> bool:
     try:
         client = get_api_gateway_management_client()
         if not client:
-            print(f"WebSocket client not available, cannot send to {connection_id}")
+            print(
+                f"WebSocket client not available, cannot send to {connection_id}")
             return False
         client.post_to_connection(
             ConnectionId=connection_id,

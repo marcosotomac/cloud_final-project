@@ -61,9 +61,12 @@ export interface MenuItem {
   name: string;
   description: string;
   price: number;
+  oldPrice?: number | null;
+  discount?: string | null;
   category: string;
-  image?: string;
+  imageUrl?: string;
   isAvailable: boolean;
+  stock: number;
   ingredients?: string[];
   preparationTime?: number;
   nutritionalInfo?: Record<string, number>;
@@ -180,16 +183,21 @@ class ApiClient {
         headers["Authorization"] = `Bearer ${this.token}`;
       }
 
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const url = `${this.baseUrl}${endpoint}`;
+      console.log(`[API] ${options.method || "GET"} ${url}`);
+
+      const response = await fetch(url, {
         ...options,
         headers,
       });
 
       const data = await response.json();
+      console.log(`[API] Response status: ${response.status}`, data);
 
       if (!response.ok) {
         // Handle error response - could be in body or direct
         const errorData = data.body ? JSON.parse(data.body) : data;
+        console.error(`[API] Error:`, errorData);
         return {
           success: false,
           error:

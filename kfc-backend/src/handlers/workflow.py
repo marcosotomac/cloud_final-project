@@ -3,6 +3,7 @@ Workflow management handlers - handles order state transitions
 """
 import json
 from datetime import datetime
+from decimal import Decimal
 
 from src.utils.response import (
     success_response, error_response, not_found_response
@@ -454,9 +455,10 @@ def complete_delivery_handler(event, context):
             start_time = datetime.fromisoformat(
                 created_at.replace('Z', '+00:00'))
             end_time = datetime.fromisoformat(now)
-            total_minutes = (end_time - start_time).total_seconds() / 60
+            total_minutes = Decimal(
+                str((end_time - start_time).total_seconds() / 60))
         except:
-            total_minutes = 0
+            total_minutes = Decimal('0')
 
         table.update_item(
             Key={

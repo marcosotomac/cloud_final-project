@@ -33,9 +33,12 @@ export interface MenuItem {
   name: string;
   description: string;
   price: number;
+  oldPrice?: number | null;
+  discount?: string | null;
   category: string;
-  image?: string;
+  imageUrl?: string;
   isAvailable: boolean;
+  stock: number;
   preparationTime?: number;
   ingredients?: string[];
   nutritionalInfo?: {
@@ -44,8 +47,6 @@ export interface MenuItem {
     carbs?: number;
     fat?: number;
   };
-  // Extended properties for product detail
-  originalPrice?: number;
   customizations?: Array<{
     type: string;
     required?: number;

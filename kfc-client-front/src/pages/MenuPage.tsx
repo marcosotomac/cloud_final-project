@@ -1,47 +1,61 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import SubNav from "@/components/SubNav";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMenu, useMenuByCategory } from "@/hooks/useMenu";
+import { useMenu } from "@/hooks/useMenu";
 import { useCart } from "@/contexts/CartContext";
-import { Plus, Star } from "lucide-react";
+import { Plus, Star, Package } from "lucide-react";
 import { toast } from "sonner";
 
 const categories = [
   { id: "all", name: "Todo el Menú", emoji: "🍗" },
-  { id: "pollo", name: "Pollo Frito", emoji: "🍗" },
+  { id: "promos", name: "Promos", emoji: "🔥" },
+  { id: "megas", name: "Megas", emoji: "🍗" },
+  { id: "para-2", name: "Para 2", emoji: "👫" },
+  { id: "sandwiches", name: "Sándwiches & Twister XL", emoji: "🥪" },
+  { id: "big-box", name: "Big Box", emoji: "📦" },
   { id: "combos", name: "Combos", emoji: "🍱" },
-  { id: "sandwiches", name: "Sandwiches", emoji: "🥪" },
   { id: "complementos", name: "Complementos", emoji: "🍟" },
-  { id: "bebidas", name: "Bebidas", emoji: "🥤" },
   { id: "postres", name: "Postres", emoji: "🍰" },
+  { id: "bebidas", name: "Bebidas", emoji: "🥤" },
 ];
 
 const MenuPage = () => {
-  const { category } = useParams();
   const navigate = useNavigate();
   const { addItem } = useCart();
-  const selectedCategory = category || "all";
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
-  const { data: allItems, isLoading: allLoading } = useMenu();
-  const { data: categoryItems, isLoading: categoryLoading } = useMenuByCategory(
-    selectedCategory !== "all" ? selectedCategory : ""
-  );
+  const { data: allItems, isLoading } = useMenu();
 
-  const items = selectedCategory === "all" ? allItems : categoryItems;
-  const isLoading = selectedCategory === "all" ? allLoading : categoryLoading;
+  // Filtrar items por categoría seleccionada
+  const items = useMemo(() => {
+    if (!allItems || selectedCategory === "all") return allItems;
+
+    const selectedCat = categories.find((c) => c.id === selectedCategory);
+    if (!selectedCat) return allItems;
+
+    return allItems.filter((item: any) => item.category === selectedCat.name);
+  }, [allItems, selectedCategory]);
 
   const handleAddToCart = (item: any) => {
+    // Validar stock
+    const stock = item.stock ?? -1;
+    if (stock === 0) {
+      toast.error(`${item.name} no tiene stock disponible`);
+      return;
+    }
+
     addItem({
       id: item.itemId,
       name: item.name,
       price: item.price,
       quantity: 1,
-      image: item.image || "/placeholder-food.jpg",
+      image: item.imageUrl || item.image || "/placeholder-food.jpg",
+      stock: stock,
     });
     toast.success(`${item.name} agregado al carrito`);
   };
@@ -61,9 +75,7 @@ const MenuPage = () => {
               key={cat.id}
               variant={selectedCategory === cat.id ? "default" : "outline"}
               className="rounded-full whitespace-nowrap"
-              onClick={() =>
-                navigate(cat.id === "all" ? "/menu" : `/menu/${cat.id}`)
-              }
+              onClick={() => setSelectedCategory(cat.id)}
             >
               <span className="mr-2">{cat.emoji}</span>
               {cat.name}
@@ -87,86 +99,110 @@ const MenuPage = () => {
           </div>
         ) : items && items.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {items.map((item: any) => (
-              <Card
-                key={item.itemId}
-                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
-              >
-                <div
-                  className="relative aspect-square bg-muted"
-                  onClick={() => navigate(`/product/${item.itemId}`)}
-                >
-                  {item.image ? (
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-6xl">
-                      🍗
-                    </div>
-                  )}
-                  {item.discount && (
-                    <Badge className="absolute top-3 left-3 bg-primary">
-                      -{item.discount}%
-                    </Badge>
-                  )}
-                  {item.isAvailable === false && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span className="text-white font-bold">
-                        No disponible
-                      </span>
-                    </div>
-                  )}
-                </div>
+            {items.map((item: any) => {
+              const stock = item.stock ?? -1;
+              const isOutOfStock = stock === 0;
+              const isLowStock = stock > 0 && stock <= 5;
+              const isUnavailable = item.isAvailable === false || isOutOfStock;
 
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3
-                      className="font-bold text-lg line-clamp-2 cursor-pointer hover:text-primary"
-                      onClick={() => navigate(`/product/${item.itemId}`)}
-                    >
-                      {item.name}
-                    </h3>
-                    {item.rating && (
-                      <div className="flex items-center text-sm text-yellow-500">
-                        <Star className="h-4 w-4 fill-current" />
-                        <span className="ml-1">{item.rating}</span>
+              return (
+                <Card
+                  key={item.itemId}
+                  className={`overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group ${
+                    isUnavailable ? "opacity-75" : ""
+                  }`}
+                >
+                  <div
+                    className="relative aspect-square bg-muted"
+                    onClick={() => navigate(`/product/${item.itemId}`)}
+                  >
+                    {item.imageUrl || item.image ? (
+                      <img
+                        src={item.imageUrl || item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-6xl">
+                        🍗
+                      </div>
+                    )}
+                    {item.discount && (
+                      <Badge className="absolute top-3 left-3 bg-primary">
+                        {item.discount}
+                      </Badge>
+                    )}
+                    {/* Stock Badge */}
+                    {stock !== -1 && (
+                      <Badge
+                        className={`absolute top-3 right-3 ${
+                          isOutOfStock
+                            ? "bg-red-500"
+                            : isLowStock
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
+                        }`}
+                      >
+                        <Package className="w-3 h-3 mr-1" />
+                        {isOutOfStock ? "Agotado" : `${stock} disp.`}
+                      </Badge>
+                    )}
+                    {isUnavailable && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="text-white font-bold">
+                          {isOutOfStock ? "Agotado" : "No disponible"}
+                        </span>
                       </div>
                     )}
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {item.description}
-                  </p>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xl font-bold text-primary">
-                        S/{item.price?.toFixed(2)}
-                      </span>
-                      {item.originalPrice && (
-                        <span className="text-sm text-muted-foreground line-through ml-2">
-                          S/{item.originalPrice.toFixed(2)}
-                        </span>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3
+                        className="font-bold text-lg line-clamp-2 cursor-pointer hover:text-primary"
+                        onClick={() => navigate(`/product/${item.itemId}`)}
+                      >
+                        {item.name}
+                      </h3>
+                      {item.rating && (
+                        <div className="flex items-center text-sm text-yellow-500">
+                          <Star className="h-4 w-4 fill-current" />
+                          <span className="ml-1">{item.rating}</span>
+                        </div>
                       )}
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddToCart(item);
-                      }}
-                      disabled={item.isAvailable === false}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Agregar
-                    </Button>
+
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                      {item.description}
+                    </p>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xl font-bold text-primary">
+                          S/{item.price?.toFixed(2)}
+                        </span>
+                        {item.oldPrice && (
+                          <span className="text-sm text-muted-foreground line-through ml-2">
+                            S/{item.oldPrice.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddToCart(item);
+                        }}
+                        disabled={isUnavailable}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        {isOutOfStock ? "Agotado" : "Agregar"}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Card className="p-12 text-center">

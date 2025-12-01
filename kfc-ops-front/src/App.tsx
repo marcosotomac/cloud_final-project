@@ -8,7 +8,6 @@ import { Layout } from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
-import Inventory from "./pages/Inventory";
 import Menu from "./pages/Menu";
 import Staff from "./pages/Staff";
 import NotFound from "./pages/NotFound";
@@ -66,16 +65,6 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <Layout>
               <Orders />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/inventory"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Inventory />
             </Layout>
           </ProtectedRoute>
         }

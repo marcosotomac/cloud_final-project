@@ -27,9 +27,12 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  oldPrice?: number | null;
+  discount?: string | null;
   category: string;
-  available: boolean;
-  image?: string;
+  imageUrl?: string;
+  isAvailable: boolean;
+  stock: number; // -1 = ilimitado, 0 = sin stock, >0 = cantidad disponible
 }
 
 interface ProductDialogProps {
@@ -40,13 +43,15 @@ interface ProductDialogProps {
 }
 
 const categories = [
-  "Pollo Frito",
-  "Hamburguesas",
-  "Sandwiches",
-  "Ensaladas",
+  "Promos",
+  "Megas",
+  "Para 2",
+  "Sándwiches & Twister XL",
+  "Big Box",
+  "Combos",
   "Complementos",
-  "Bebidas",
   "Postres",
+  "Bebidas",
 ];
 
 export const ProductDialog = ({
@@ -63,9 +68,12 @@ export const ProductDialog = ({
     name: "",
     description: "",
     price: 0,
-    category: "Pollo Frito",
-    available: true,
-    image: "",
+    oldPrice: null,
+    discount: null,
+    category: "Promos",
+    imageUrl: "",
+    isAvailable: true,
+    stock: -1, // -1 = ilimitado por defecto
   });
 
   // Reset form when dialog opens or product changes
@@ -75,11 +83,14 @@ export const ProductDialog = ({
         name: product?.name || "",
         description: product?.description || "",
         price: product?.price || 0,
-        category: product?.category || "Pollo Frito",
-        available: product?.available ?? true,
-        image: product?.image || "",
+        oldPrice: product?.oldPrice || null,
+        discount: product?.discount || null,
+        category: product?.category || "Promos",
+        imageUrl: product?.imageUrl || "",
+        isAvailable: product?.isAvailable ?? true,
+        stock: product?.stock ?? -1,
       });
-      setImagePreview(product?.image || null);
+      setImagePreview(product?.imageUrl || null);
     }
   }, [open, product]);
 
@@ -112,12 +123,12 @@ export const ProductDialog = ({
     setIsUploading(true);
     try {
       const publicUrl = await uploadService.uploadFile(file, "menu");
-      setFormData((prev) => ({ ...prev, image: publicUrl }));
+      setFormData((prev) => ({ ...prev, imageUrl: publicUrl }));
       toast.success("Imagen subida correctamente");
     } catch (error: any) {
       console.error("Upload error:", error);
       toast.error(error.message || "Error al subir la imagen");
-      setImagePreview(formData.image || null);
+      setImagePreview(formData.imageUrl || null);
     } finally {
       setIsUploading(false);
       // Reset file input
@@ -128,7 +139,7 @@ export const ProductDialog = ({
   };
 
   const handleRemoveImage = () => {
-    setFormData((prev) => ({ ...prev, image: "" }));
+    setFormData((prev) => ({ ...prev, imageUrl: "" }));
     setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -185,10 +196,47 @@ export const ProductDialog = ({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    price: parseFloat(e.target.value),
+                    price: parseFloat(e.target.value) || 0,
                   })
                 }
                 required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="oldPrice">Precio Anterior (opcional)</Label>
+              <Input
+                id="oldPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Ej: 59.90"
+                value={formData.oldPrice || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    oldPrice: e.target.value
+                      ? parseFloat(e.target.value)
+                      : null,
+                  })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="discount">Descuento (opcional)</Label>
+              <Input
+                id="discount"
+                placeholder="Ej: -30%"
+                value={formData.discount || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    discount: e.target.value || null,
+                  })
+                }
               />
             </div>
 
@@ -212,6 +260,47 @@ export const ProductDialog = ({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Stock Section */}
+          <div>
+            <Label htmlFor="stock">Stock</Label>
+            <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="unlimited-stock"
+                  checked={formData.stock === -1}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, stock: checked ? -1 : 0 })
+                  }
+                />
+                <Label htmlFor="unlimited-stock" className="text-sm">
+                  Ilimitado
+                </Label>
+              </div>
+              {formData.stock !== -1 && (
+                <Input
+                  id="stock"
+                  type="number"
+                  min="0"
+                  className="w-32"
+                  value={formData.stock}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      stock: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {formData.stock === -1
+                ? "Stock ilimitado - siempre disponible"
+                : formData.stock === 0
+                ? "Sin stock - no se puede vender"
+                : `${formData.stock} unidades disponibles`}
+            </p>
           </div>
 
           {/* Image Upload Section */}
@@ -303,9 +392,9 @@ export const ProductDialog = ({
 
               <Input
                 placeholder="https://ejemplo.com/imagen.jpg"
-                value={formData.image}
+                value={formData.imageUrl || ""}
                 onChange={(e) => {
-                  setFormData({ ...formData, image: e.target.value });
+                  setFormData({ ...formData, imageUrl: e.target.value });
                   setImagePreview(e.target.value || null);
                 }}
               />
@@ -315,9 +404,9 @@ export const ProductDialog = ({
           <div className="flex items-center space-x-2">
             <Switch
               id="available"
-              checked={formData.available}
+              checked={formData.isAvailable}
               onCheckedChange={(checked) =>
-                setFormData({ ...formData, available: checked })
+                setFormData({ ...formData, isAvailable: checked })
               }
             />
             <Label htmlFor="available">Disponible</Label>

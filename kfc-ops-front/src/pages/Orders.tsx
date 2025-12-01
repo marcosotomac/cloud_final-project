@@ -1,15 +1,19 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OrderCard } from "@/components/OrderCard";
-import { DndContext, DragEndEvent, closestCorners } from "@dnd-kit/core";
 import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { Bell, Loader2, RefreshCw } from "lucide-react";
+  DndContext,
+  DragEndEvent,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  useDroppable,
+} from "@dnd-kit/core";
+import { Bell, Loader2, RefreshCw, LayoutGrid, List } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   useOrders,
   useTakeOrder,
@@ -22,6 +26,9 @@ import {
 import { useWebSocket, useOrderNotifications } from "@/hooks/useWebSocket";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+
+// View mode type
+type ViewMode = "tabs" | "kanban";
 
 // Map API status to UI status
 type UIStatus = "pending" | "kitchen" | "packing" | "delivery";
@@ -53,10 +60,70 @@ interface UIOrder {
   apiStatus: string;
 }
 
+// Raw API order type
+interface RawOrder {
+  orderId?: string;
+  id?: string;
+  status: string;
+  customerName?: string;
+  customer?: { name?: string };
+  items?: any[];
+  total?: number;
+  totalAmount?: number;
+  createdAt?: string;
+}
+
+// Valid transitions: current UI status -> next UI status
+const validTransitions: Record<UIStatus, UIStatus | null> = {
+  pending: "kitchen", // PENDING -> RECEIVED/COOKING
+  kitchen: "packing", // COOKING/RECEIVED -> COOKED
+  packing: "delivery", // COOKED/PACKED -> DELIVERING
+  delivery: null, // No next status
+};
+
+// Droppable zone component for each status column
+const DroppableZone = ({
+  id,
+  children,
+  className = "",
+}: {
+  id: string;
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`min-h-[200px] rounded-lg transition-colors ${
+        isOver ? "bg-primary/10 ring-2 ring-primary ring-dashed" : ""
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
+
 const Orders = () => {
+  const [viewMode, setViewMode] = useState<ViewMode>("tabs");
   const [filterStatus, setFilterStatus] = useState<UIStatus | "all">("all");
+  const [activeTab, setActiveTab] = useState<string>("all");
   const { addNotification } = useNotifications();
   const queryClient = useQueryClient();
+
+  // Local state for orders - this is the source of truth for UI
+  const [localOrders, setLocalOrders] = useState<RawOrder[]>([]);
+  const pendingUpdates = useRef<Set<string>>(new Set());
+
+  // Drag sensor with activation constraint to prevent accidental drags
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    })
+  );
 
   // Keep WebSocket connected and refresh caches on events
   const { isConnected } = useWebSocket();
@@ -114,6 +181,27 @@ const Orders = () => {
     isRefetching,
   } = useOrders();
 
+  // Sync API orders to local state (only when not pending updates)
+  useEffect(() => {
+    if (Array.isArray(apiOrders) && apiOrders.length > 0) {
+      setLocalOrders((current) => {
+        // Merge: keep local status for orders with pending updates, use API for others
+        const merged = apiOrders.map((apiOrder: any) => {
+          const orderId = apiOrder.orderId || apiOrder.id;
+          const localOrder = current.find(
+            (o) => (o.orderId || o.id) === orderId
+          );
+          // If we have a pending update for this order, keep local version
+          if (pendingUpdates.current.has(orderId) && localOrder) {
+            return localOrder;
+          }
+          return apiOrder;
+        });
+        return merged;
+      });
+    }
+  }, [apiOrders]);
+
   // Workflow mutations
   const takeOrder = useTakeOrder();
   const startCooking = useStartCooking();
@@ -129,11 +217,27 @@ const Orders = () => {
     startDelivery.isPending ||
     completeOrder.isPending;
 
-  // Transform API orders to UI format
-  const orders: UIOrder[] = useMemo(() => {
-    if (!Array.isArray(apiOrders)) return [];
+  // Helper to update local order status immediately
+  const updateLocalOrderStatus = useCallback(
+    (orderId: string, newStatus: string) => {
+      console.log(`[Local] Updating order ${orderId} to ${newStatus}`);
+      setLocalOrders((current) =>
+        current.map((order) => {
+          if ((order.orderId || order.id) === orderId) {
+            return { ...order, status: newStatus };
+          }
+          return order;
+        })
+      );
+    },
+    []
+  );
 
-    return apiOrders.map((order: any) => ({
+  // Transform local orders to UI format
+  const orders: UIOrder[] = useMemo(() => {
+    if (!Array.isArray(localOrders)) return [];
+
+    return localOrders.map((order: any) => ({
       id: order.orderId || order.id,
       customer: order.customerName || order.customer?.name || "Cliente",
       items:
@@ -146,74 +250,152 @@ const Orders = () => {
       createdAt: new Date(order.createdAt || Date.now()),
       apiStatus: order.status,
     }));
-  }, [apiOrders]);
+  }, [localOrders]);
 
   const handleStatusChange = async (orderId: string) => {
-    // Get fresh order state from apiOrders (not transformed)
-    const apiOrder = apiOrders.find(
-      (o: any) => (o.orderId || o.id) === orderId
+    // Get order from LOCAL state (not API)
+    const currentOrder = localOrders.find(
+      (o) => (o.orderId || o.id) === orderId
     );
-    if (!apiOrder) {
+    if (!currentOrder) {
       toast.error("Orden no encontrada");
       return;
     }
 
     // Normalize to uppercase to match backend enum
-    const backendStatus = ((apiOrder as any).status || "").toUpperCase();
+    const backendStatus = (currentOrder.status || "").toUpperCase();
     console.log(`[Workflow] Order ${orderId} current status: ${backendStatus}`);
+
+    // Mark this order as having a pending update
+    pendingUpdates.current.add(orderId);
 
     try {
       // Flow: PENDING -> RECEIVED -> COOKING -> COOKED -> PACKED -> DELIVERING -> COMPLETED
       let result;
+      let nextStatus: string;
+
       if (backendStatus === "PENDING") {
+        nextStatus = "RECEIVED";
+        updateLocalOrderStatus(orderId, nextStatus); // Update UI immediately
         result = await takeOrder.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} aceptada → RECEIVED`);
+        toast.success(`Orden aceptada → RECEIVED`);
       } else if (backendStatus === "RECEIVED") {
+        nextStatus = "COOKING";
+        updateLocalOrderStatus(orderId, nextStatus);
         result = await startCooking.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} en cocina → COOKING`);
+        toast.success(`Orden en cocina → COOKING`);
       } else if (backendStatus === "COOKING") {
+        nextStatus = "COOKED";
+        updateLocalOrderStatus(orderId, nextStatus);
         result = await finishCooking.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} lista → COOKED`);
+        toast.success(`Orden lista → COOKED`);
       } else if (backendStatus === "COOKED") {
+        nextStatus = "PACKED";
+        updateLocalOrderStatus(orderId, nextStatus);
         result = await packOrder.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} empacada → PACKED`);
+        toast.success(`Orden empacada → PACKED`);
       } else if (backendStatus === "PACKED") {
+        nextStatus = "DELIVERING";
+        updateLocalOrderStatus(orderId, nextStatus);
         result = await startDelivery.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} en camino → DELIVERING`);
+        toast.success(`Orden en camino → DELIVERING`);
       } else if (backendStatus === "DELIVERING") {
+        nextStatus = "COMPLETED";
+        updateLocalOrderStatus(orderId, nextStatus);
         result = await completeOrder.mutateAsync(orderId);
-        toast.success(`Orden ${orderId} completada → COMPLETED`);
-      } else if (backendStatus === "COMPLETED" || backendStatus === "DELIVERED") {
-        toast.info(`Orden ${orderId} ya está completada`);
+        toast.success(`Orden completada → COMPLETED`);
+      } else if (
+        backendStatus === "COMPLETED" ||
+        backendStatus === "DELIVERED"
+      ) {
+        toast.info(`Esta orden ya está completada`);
+        pendingUpdates.current.delete(orderId);
         return;
       } else {
         toast.warning(`Estado desconocido: ${backendStatus}`);
+        pendingUpdates.current.delete(orderId);
         return;
       }
 
-      console.log(`[Workflow] Order ${orderId} transitioned to:`, result?.status);
+      console.log(
+        `[Workflow] Order ${orderId} transitioned to:`,
+        result?.status
+      );
+
+      // Clear pending flag after successful mutation
+      pendingUpdates.current.delete(orderId);
 
       addNotification({
         title: "Estado Actualizado",
-        message: `Orden ${orderId} actualizada a ${result?.status || "siguiente estado"}`,
+        message: `Orden actualizada a ${nextStatus}`,
         type: "order",
       });
     } catch (error: any) {
       const errorMsg = error?.message || "Error al actualizar orden";
       toast.error(errorMsg);
       console.error("[Workflow] Error:", error);
+
+      // Revert local state on error - refetch will sync
+      pendingUpdates.current.delete(orderId);
+      refetch();
     }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
 
-    const activeOrder = orders.find((o) => o.id === active.id);
+    // No drop target
+    if (!over) return;
+
+    const orderId = active.id as string;
+    const dropZoneId = over.id as string;
+
+    // Find the order being dragged
+    const activeOrder = orders.find((o) => o.id === orderId);
     if (!activeOrder) return;
 
-    // Determine the new status based on the drop zone
-    handleStatusChange(activeOrder.id);
+    const currentStatus = activeOrder.status;
+
+    // Check if dropped on a status zone (not on another order)
+    const statusZones: UIStatus[] = [
+      "pending",
+      "kitchen",
+      "packing",
+      "delivery",
+    ];
+    const targetStatus = statusZones.find((s) => dropZoneId === `zone-${s}`);
+
+    // If not dropped on a zone, or dropped on same status zone, do nothing
+    if (!targetStatus || targetStatus === currentStatus) {
+      return;
+    }
+
+    // Validate transition: only allow moving to the NEXT status
+    const expectedNextStatus = validTransitions[currentStatus];
+
+    if (targetStatus !== expectedNextStatus) {
+      // Invalid transition
+      const statusNames: Record<UIStatus, string> = {
+        pending: "Pendientes",
+        kitchen: "Cocina",
+        packing: "Empaque",
+        delivery: "Delivery",
+      };
+
+      if (expectedNextStatus) {
+        toast.error(
+          `Solo puedes mover de ${statusNames[currentStatus]} a ${statusNames[expectedNextStatus]}`
+        );
+      } else {
+        toast.error(
+          `Las órdenes en ${statusNames[currentStatus]} no pueden moverse`
+        );
+      }
+      return;
+    }
+
+    // Valid transition - update status
+    handleStatusChange(orderId);
   };
 
   const filteredOrders = orders.filter(
@@ -242,10 +424,37 @@ const Orders = () => {
             Panel de Órdenes en Tiempo Real
           </h1>
           <p className="text-muted-foreground mt-2">
-            Gestiona el flujo completo de pedidos con drag & drop
+            {viewMode === "tabs"
+              ? "Vista por pestañas - haz clic en los botones para avanzar"
+              : "Vista Kanban - arrastra las órdenes entre columnas"}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(value) => value && setViewMode(value as ViewMode)}
+            className="border rounded-md"
+          >
+            <ToggleGroupItem
+              value="tabs"
+              aria-label="Vista Tabs"
+              className="px-3"
+            >
+              <List className="w-4 h-4 mr-2" />
+              Tabs
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="kanban"
+              aria-label="Vista Kanban"
+              className="px-3"
+            >
+              <LayoutGrid className="w-4 h-4 mr-2" />
+              Kanban
+            </ToggleGroupItem>
+          </ToggleGroup>
+
           <Badge variant={isConnected ? "default" : "secondary"}>
             {isConnected ? "WS Conectado" : "Reconectando WS..."}
           </Badge>
@@ -274,8 +483,13 @@ const Orders = () => {
             Las nuevas órdenes aparecerán aquí automáticamente
           </p>
         </div>
-      ) : (
-        <Tabs defaultValue="all" className="space-y-6">
+      ) : viewMode === "tabs" ? (
+        /* ========== VISTA TABS ========== */
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="all" onClick={() => setFilterStatus("all")}>
               Todas
@@ -321,17 +535,26 @@ const Orders = () => {
             </TabsTrigger>
           </TabsList>
 
-          <DndContext
-            collisionDetection={closestCorners}
-            onDragEnd={handleDragEnd}
-          >
-            <TabsContent value="all" className="space-y-4">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <SortableContext
-                  items={filteredOrders.map((o) => o.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {filteredOrders.map((order) => (
+          {/* Vista "Todas" en modo Tabs */}
+          <TabsContent value="all" className="space-y-4">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {orders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onStatusChange={handleStatusChange}
+                  disabled={isMutating}
+                />
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Vistas individuales por estado en modo Tabs */}
+          {(["pending", "kitchen", "packing", "delivery"] as UIStatus[]).map(
+            (status) => (
+              <TabsContent key={status} value={status} className="space-y-4">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {getOrdersByStatus(status).map((order) => (
                     <OrderCard
                       key={order.id}
                       order={order}
@@ -339,18 +562,36 @@ const Orders = () => {
                       disabled={isMutating}
                     />
                   ))}
-                </SortableContext>
-              </div>
-            </TabsContent>
-
+                  {getOrdersByStatus(status).length === 0 && (
+                    <div className="col-span-full text-center py-12 text-muted-foreground">
+                      No hay órdenes en este estado
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            )
+          )}
+        </Tabs>
+      ) : (
+        /* ========== VISTA KANBAN (Drag & Drop) ========== */
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {(["pending", "kitchen", "packing", "delivery"] as UIStatus[]).map(
               (status) => (
-                <TabsContent key={status} value={status} className="space-y-4">
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    <SortableContext
-                      items={getOrdersByStatus(status).map((o) => o.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
+                <DroppableZone key={status} id={`zone-${status}`}>
+                  <div className="space-y-3 p-3 bg-muted/30 rounded-lg min-h-[500px]">
+                    <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center justify-between">
+                      <span>
+                        {status === "pending" && "📋 Pendientes"}
+                        {status === "kitchen" && "🍳 Cocina"}
+                        {status === "packing" && "📦 Empaque"}
+                        {status === "delivery" && "🚗 Delivery"}
+                      </span>
+                      <Badge variant="outline">
+                        {getOrdersByStatus(status).length}
+                      </Badge>
+                    </h3>
+                    <div className="space-y-3">
                       {getOrdersByStatus(status).map((order) => (
                         <OrderCard
                           key={order.id}
@@ -359,13 +600,18 @@ const Orders = () => {
                           disabled={isMutating}
                         />
                       ))}
-                    </SortableContext>
+                      {getOrdersByStatus(status).length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-lg">
+                          Arrastra órdenes aquí
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </TabsContent>
+                </DroppableZone>
               )
             )}
-          </DndContext>
-        </Tabs>
+          </div>
+        </DndContext>
       )}
     </div>
   );

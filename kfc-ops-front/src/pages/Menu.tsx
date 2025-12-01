@@ -2,7 +2,15 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Plus, Trash2, Search, Loader2, RefreshCw } from "lucide-react";
+import {
+  Edit,
+  Plus,
+  Trash2,
+  Search,
+  Loader2,
+  RefreshCw,
+  Package,
+} from "lucide-react";
 import { ProductDialog, Product } from "@/components/ProductDialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -17,13 +25,15 @@ import {
 } from "@/hooks/useMenu";
 
 const defaultCategories = [
-  "Pollo Frito",
-  "Hamburguesas",
-  "Sandwiches",
-  "Ensaladas",
+  "Promos",
+  "Megas",
+  "Para 2",
+  "Sándwiches & Twister XL",
+  "Big Box",
+  "Combos",
   "Complementos",
-  "Bebidas",
   "Postres",
+  "Bebidas",
 ];
 
 const Menu = () => {
@@ -51,9 +61,12 @@ const Menu = () => {
       name: item.name,
       description: item.description || "",
       price: item.price || 0,
+      oldPrice: item.oldPrice || null,
+      discount: item.discount || null,
       category: item.category || "Sin categoría",
-      available: item.isAvailable !== false,
-      image: item.image || item.imageUrl || "",
+      imageUrl: item.imageUrl || item.image || "",
+      isAvailable: item.isAvailable !== false,
+      stock: item.stock ?? -1, // -1 = ilimitado
     }));
   }, [menuItems]);
 
@@ -73,7 +86,7 @@ const Menu = () => {
       const matchesSearch = product.name
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-      const matchesAvailability = !showOnlyAvailable || product.available;
+      const matchesAvailability = !showOnlyAvailable || product.isAvailable;
       return matchesCategory && matchesSearch && matchesAvailability;
     });
   }, [products, selectedCategory, searchTerm, showOnlyAvailable]);
@@ -89,9 +102,12 @@ const Menu = () => {
             name: productData.name,
             description: productData.description,
             price: productData.price,
+            oldPrice: productData.oldPrice,
+            discount: productData.discount,
             category: productData.category,
-            image: productData.image,
-            isAvailable: productData.available,
+            imageUrl: productData.imageUrl,
+            isAvailable: productData.isAvailable,
+            stock: productData.stock,
           },
         });
         toast.success("Producto actualizado correctamente");
@@ -100,9 +116,12 @@ const Menu = () => {
           name: productData.name,
           description: productData.description,
           price: productData.price,
+          oldPrice: productData.oldPrice,
+          discount: productData.discount,
           category: productData.category,
-          image: productData.image,
-          isAvailable: productData.available,
+          imageUrl: productData.imageUrl,
+          isAvailable: productData.isAvailable,
+          stock: productData.stock,
         });
         toast.success("Producto creado correctamente");
       }
@@ -216,9 +235,9 @@ const Menu = () => {
               className="overflow-hidden hover:shadow-lg transition-shadow"
             >
               <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                {product.image ? (
+                {product.imageUrl ? (
                   <img
-                    src={product.image}
+                    src={product.imageUrl}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
@@ -230,29 +249,60 @@ const Menu = () => {
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-bold text-lg">{product.name}</h3>
                   <Badge
-                    variant={product.available ? "default" : "secondary"}
+                    variant={product.isAvailable ? "default" : "secondary"}
                     className={
-                      product.available
+                      product.isAvailable && product.stock !== 0
                         ? "bg-green-500/20 text-green-700 dark:text-green-400"
-                        : ""
+                        : "bg-red-500/20 text-red-700 dark:text-red-400"
                     }
                   >
-                    {product.available ? "Disponible" : "No disponible"}
+                    {product.stock === 0
+                      ? "Sin Stock"
+                      : product.isAvailable
+                      ? "Disponible"
+                      : "No disponible"}
                   </Badge>
                 </div>
 
-                <Badge variant="outline" className="mb-3">
-                  {product.category}
-                </Badge>
+                <div className="flex gap-2 mb-3">
+                  <Badge variant="outline">{product.category}</Badge>
+                  <Badge
+                    variant="outline"
+                    className={
+                      product.stock === -1
+                        ? "bg-blue-500/10 border-blue-500/30"
+                        : product.stock === 0
+                        ? "bg-red-500/10 border-red-500/30"
+                        : product.stock <= 10
+                        ? "bg-yellow-500/10 border-yellow-500/30"
+                        : "bg-green-500/10 border-green-500/30"
+                    }
+                  >
+                    <Package className="w-3 h-3 mr-1" />
+                    {product.stock === -1 ? "∞" : product.stock}
+                  </Badge>
+                </div>
 
                 <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                   {product.description}
                 </p>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-primary">
-                    S/{product.price.toFixed(2)}
-                  </span>
+                  <div>
+                    <span className="text-2xl font-bold text-primary">
+                      S/{product.price.toFixed(2)}
+                    </span>
+                    {product.oldPrice && (
+                      <span className="text-sm text-muted-foreground line-through ml-2">
+                        S/{product.oldPrice.toFixed(2)}
+                      </span>
+                    )}
+                    {product.discount && (
+                      <Badge className="ml-2 bg-red-500">
+                        {product.discount}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"

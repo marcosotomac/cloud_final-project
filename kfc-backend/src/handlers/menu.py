@@ -42,8 +42,10 @@ def create_menu_item_handler(event, context):
             'name': body['name'],
             'description': body.get('description', ''),
             'price': float(body['price']),
+            'oldPrice': float(body['oldPrice']) if body.get('oldPrice') else None,
+            'discount': body.get('discount', ''),
             'category': body['category'],
-            'image': body.get('image', ''),
+            'imageUrl': body.get('imageUrl', body.get('image', '')),
             'ingredients': body.get('ingredients', []),
             'nutritionalInfo': body.get('nutritionalInfo', {}),
             'preparationTime': body.get('preparationTime', 15),
@@ -175,9 +177,9 @@ def update_menu_item_handler(event, context):
         expression_names = {}
 
         updatable_fields = [
-            'name', 'description', 'price', 'category', 'image',
-            'ingredients', 'nutritionalInfo', 'preparationTime',
-            'isAvailable', 'isFeatured', 'tags', 'stock'
+            'name', 'description', 'price', 'oldPrice', 'discount',
+            'category', 'imageUrl', 'image', 'ingredients', 'nutritionalInfo',
+            'preparationTime', 'isAvailable', 'isFeatured', 'tags', 'stock'
         ]
 
         for field in updatable_fields:

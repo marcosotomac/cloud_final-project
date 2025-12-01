@@ -211,55 +211,70 @@ const Dashboard = () => {
           </div>
         ) : recentOrders?.length ? (
           <div className="space-y-4">
-            {recentOrders.map((order: any) => (
-              <div
-                key={order.orderId}
-                className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div>
-                    <p className="font-semibold">
-                      #{order.orderId?.slice(-6).toUpperCase()}
-                    </p>
+            {recentOrders.map((order: any) => {
+              const status = (order.status || "").toUpperCase();
+              const isCompleted =
+                status === "COMPLETED" || status === "DELIVERED";
+              const isPreparing = status === "COOKING" || status === "RECEIVED";
+              const isPending = status === "PENDING";
+              const isDelivery = status === "DELIVERING" || status === "PACKED";
+
+              const statusLabels: Record<string, string> = {
+                PENDING: "Pendiente",
+                RECEIVED: "Recibido",
+                COOKING: "Cocinando",
+                COOKED: "Listo",
+                PACKED: "Empacado",
+                DELIVERING: "En Camino",
+                DELIVERED: "Entregado",
+                COMPLETED: "Completado",
+                CANCELLED: "Cancelado",
+              };
+
+              return (
+                <div
+                  key={order.orderId || order.id}
+                  className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-semibold">
+                        #{(order.orderId || order.id)?.slice(-6).toUpperCase()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {order.customerName ||
+                          order.customer?.name ||
+                          "Cliente"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
                     <p className="text-sm text-muted-foreground">
-                      {order.customerName || "Cliente"}
+                      {order.items?.length || 0} items
                     </p>
+                    <p className="font-bold text-primary">
+                      S/{(order.total || order.totalAmount || 0).toFixed(2)}
+                    </p>
+                    <Badge
+                      variant="secondary"
+                      className={
+                        isCompleted
+                          ? "bg-green-500/20 text-green-700 dark:text-green-400"
+                          : isPreparing
+                          ? "bg-orange-500/20 text-orange-700 dark:text-orange-400"
+                          : isDelivery
+                          ? "bg-blue-500/20 text-blue-700 dark:text-blue-400"
+                          : isPending
+                          ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400"
+                          : "bg-gray-500/20 text-gray-700 dark:text-gray-400"
+                      }
+                    >
+                      {statusLabels[status] || status}
+                    </Badge>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <p className="text-sm text-muted-foreground">
-                    {order.items?.length || 0} items
-                  </p>
-                  <p className="font-bold text-primary">
-                    S/{order.total?.toFixed(2) || "0.00"}
-                  </p>
-                  <Badge
-                    variant={
-                      order.status === "completed" ? "default" : "secondary"
-                    }
-                    className={
-                      order.status === "completed" ||
-                      order.status === "delivered"
-                        ? "bg-green-500/20 text-green-700 dark:text-green-400"
-                        : order.status === "preparing" ||
-                          order.status === "in_kitchen"
-                        ? "bg-orange-500/20 text-orange-700 dark:text-orange-400"
-                        : "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400"
-                    }
-                  >
-                    {order.status === "completed" ||
-                    order.status === "delivered"
-                      ? "Completado"
-                      : order.status === "preparing" ||
-                        order.status === "in_kitchen"
-                      ? "Preparando"
-                      : order.status === "pending"
-                      ? "Pendiente"
-                      : order.status}
-                  </Badge>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-center text-muted-foreground py-8">
