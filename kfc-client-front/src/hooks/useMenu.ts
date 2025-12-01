@@ -36,7 +36,7 @@ export const useMenuByCategory = (category: string) => {
 
 export const useMenuItem = (itemId: string) => {
   const queryClient = useQueryClient();
-  
+
   return useQuery({
     queryKey: ["menu", "item", itemId],
     queryFn: async () => {
@@ -46,7 +46,7 @@ export const useMenuItem = (itemId: string) => {
         const item = cachedMenu.find((i: any) => i.itemId === itemId);
         if (item) return item;
       }
-      
+
       // If not in cache, fetch the full menu and find the item
       const response = await menuService.getMenu();
       if (response.success) {
@@ -55,7 +55,7 @@ export const useMenuItem = (itemId: string) => {
         const item = items.find((i: any) => i.itemId === itemId);
         if (item) return item;
       }
-      
+
       throw new Error("Producto no encontrado");
     },
     enabled: !!itemId,

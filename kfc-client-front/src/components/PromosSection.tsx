@@ -26,10 +26,13 @@ const PromosSection = () => {
   const navigate = useNavigate();
 
   // Get promo products (category "Promos" or items with significant discounts)
-  const promoProducts = (menuItems as MenuItem[]).filter(
-    (item) => item.category?.toLowerCase() === "promos" || 
-              (item.discount && parseInt(item.discount) <= -25)
-  ).slice(0, 10);
+  const promoProducts = (menuItems as MenuItem[])
+    .filter(
+      (item) =>
+        item.category?.toLowerCase() === "promos" ||
+        (item.discount && parseInt(item.discount) <= -25)
+    )
+    .slice(0, 10);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
@@ -148,7 +151,9 @@ const PromosSection = () => {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm sm:text-lg font-bold">S/{item.price.toFixed(2)}</p>
+                  <p className="text-sm sm:text-lg font-bold">
+                    S/{item.price.toFixed(2)}
+                  </p>
                 </div>
               </Card>
             ))}

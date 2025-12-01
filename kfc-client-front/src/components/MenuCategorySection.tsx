@@ -25,7 +25,11 @@ interface MenuCategorySectionProps {
   emoji?: string;
 }
 
-const MenuCategorySection = ({ title, category, emoji }: MenuCategorySectionProps) => {
+const MenuCategorySection = ({
+  title,
+  category,
+  emoji,
+}: MenuCategorySectionProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { data: menuItems = [], isLoading, error } = useMenu();
   const { addItem } = useCart();
@@ -153,7 +157,9 @@ const MenuCategorySection = ({ title, category, emoji }: MenuCategorySectionProp
                       </span>
                     )}
                   </div>
-                  <p className="text-sm sm:text-lg font-bold">S/{item.price.toFixed(2)}</p>
+                  <p className="text-sm sm:text-lg font-bold">
+                    S/{item.price.toFixed(2)}
+                  </p>
                 </div>
               </Card>
             ))}

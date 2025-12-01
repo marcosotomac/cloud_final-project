@@ -6,7 +6,9 @@ const Footer = () => {
       {/* Social Media Banner */}
       <div className="bg-primary py-4">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-center gap-4">
-          <span className="text-white font-medium">Síguenos en nuestras redes sociales</span>
+          <span className="text-white font-medium">
+            Síguenos en nuestras redes sociales
+          </span>
           <div className="flex gap-3">
             <a
               href="https://instagram.com/kfcperu"
@@ -49,15 +51,23 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           {/* Contact */}
           <div>
-            <h3 className="font-bold text-base sm:text-lg mb-3 sm:mb-4">Contacto & Atención al Cliente</h3>
+            <h3 className="font-bold text-base sm:text-lg mb-3 sm:mb-4">
+              Contacto & Atención al Cliente
+            </h3>
             <ul className="space-y-2 sm:space-y-3">
               <li>
-                <a href="#" className="text-gray-300 hover:text-white flex items-center gap-2 text-sm sm:text-base">
+                <a
+                  href="#"
+                  className="text-gray-300 hover:text-white flex items-center gap-2 text-sm sm:text-base"
+                >
                   📝 Encuesta de satisfacción
                 </a>
               </li>
               <li>
-                <a href="tel:505-0505" className="text-gray-300 hover:text-white flex items-center gap-2 text-sm sm:text-base">
+                <a
+                  href="tel:505-0505"
+                  className="text-gray-300 hover:text-white flex items-center gap-2 text-sm sm:text-base"
+                >
                   📞 Teléfono 505-0505
                 </a>
               </li>
@@ -76,7 +86,9 @@ const Footer = () => {
 
           {/* About */}
           <div>
-            <h3 className="font-bold text-base sm:text-lg mb-3 sm:mb-4">Sobre Nosotros</h3>
+            <h3 className="font-bold text-base sm:text-lg mb-3 sm:mb-4">
+              Sobre Nosotros
+            </h3>
             <ul className="space-y-2 sm:space-y-3">
               <li>
                 <a href="#" className="text-gray-300 hover:text-white">
@@ -103,7 +115,9 @@ const Footer = () => {
 
           {/* Policies */}
           <div>
-            <h3 className="font-bold text-base sm:text-lg mb-3 sm:mb-4">Políticas & Términos</h3>
+            <h3 className="font-bold text-base sm:text-lg mb-3 sm:mb-4">
+              Políticas & Términos
+            </h3>
             <ul className="space-y-2 sm:space-y-3">
               <li>
                 <a href="#" className="text-gray-300 hover:text-white">

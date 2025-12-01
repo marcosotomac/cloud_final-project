@@ -52,20 +52,24 @@ const ProductDetail = () => {
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
 
   // Get add-on items from menu (complementos, bebidas, postres)
-  const addOnItems = (allMenuItems as any[]).filter(
-    (item) =>
-      item.category === "Complementos" ||
-      item.category === "Bebidas" ||
-      item.category === "Postres"
-  ).slice(0, 10);
+  const addOnItems = (allMenuItems as any[])
+    .filter(
+      (item) =>
+        item.category === "Complementos" ||
+        item.category === "Bebidas" ||
+        item.category === "Postres"
+    )
+    .slice(0, 10);
 
   // Check if this is a "Mega" product that needs customization
-  const isMegaProduct = product?.category === "Megas" || 
-                        product?.name?.toLowerCase().includes("mega") ||
-                        product?.name?.toLowerCase().includes("piezas");
-  
-  const hasPieces = product?.description?.toLowerCase().includes("piezas") ||
-                    product?.description?.toLowerCase().includes("pieza");
+  const isMegaProduct =
+    product?.category === "Megas" ||
+    product?.name?.toLowerCase().includes("mega") ||
+    product?.name?.toLowerCase().includes("piezas");
+
+  const hasPieces =
+    product?.description?.toLowerCase().includes("piezas") ||
+    product?.description?.toLowerCase().includes("pieza");
 
   // Extract number of pieces from description
   const piecesMatch = product?.description?.match(/(\d+)\s*piezas?/i);
@@ -156,7 +160,9 @@ const ProductDetail = () => {
 
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
-    : product.discount ? parseInt(product.discount) : 0;
+    : product.discount
+    ? parseInt(product.discount)
+    : 0;
 
   const totalPrice = (product.price + extrasTotal) * quantity;
 
@@ -171,7 +177,11 @@ const ProductDetail = () => {
           <Card className="p-4 sm:p-6 bg-white border-0 shadow-sm">
             <div className="relative mb-4 sm:mb-6 bg-gradient-to-b from-red-50 to-orange-50 rounded-xl p-2 sm:p-4">
               <img
-                src={product.imageUrl || product.image || "/placeholder-product.jpg"}
+                src={
+                  product.imageUrl ||
+                  product.image ||
+                  "/placeholder-product.jpg"
+                }
                 alt={product.name}
                 className="w-full aspect-square object-contain max-h-64 sm:max-h-none"
                 onError={(e) => {
@@ -180,8 +190,12 @@ const ProductDetail = () => {
               />
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-bold mb-2">{product.name}</h1>
-            <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">{product.description}</p>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2">
+              {product.name}
+            </h1>
+            <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
+              {product.description}
+            </p>
 
             {/* Price */}
             <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 flex-wrap">
@@ -235,7 +249,9 @@ const ProductDetail = () => {
 
           {/* Right Side - Customization Panel */}
           <div className="space-y-3 sm:space-y-4">
-            <h2 className="text-lg sm:text-xl font-bold">Personaliza tu pedido</h2>
+            <h2 className="text-lg sm:text-xl font-bold">
+              Personaliza tu pedido
+            </h2>
 
             {/* Recipe Selection - Only for products with pieces */}
             {hasPieces && (
@@ -245,20 +261,31 @@ const ProductDetail = () => {
                   className="w-full flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50"
                 >
                   <div className="text-left">
-                    <h3 className="font-bold text-sm sm:text-base">Elige la Receta</h3>
+                    <h3 className="font-bold text-sm sm:text-base">
+                      Elige la Receta
+                    </h3>
                     <p className="text-xs sm:text-sm text-gray-500">
-                      {requiredPieces}x Receta {recipeComplete ? "Original" : ""}
+                      {requiredPieces}x Receta{" "}
+                      {recipeComplete ? "Original" : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2">
                     <Badge
-                      className={`text-xs sm:text-sm ${recipeComplete 
-                        ? "bg-green-100 text-green-700 border-green-200" 
-                        : "bg-gray-100 text-gray-600"}`}
+                      className={`text-xs sm:text-sm ${
+                        recipeComplete
+                          ? "bg-green-100 text-green-700 border-green-200"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
                     >
-                      {recipeComplete ? "Completado" : `${totalRecipe}/${requiredPieces}`}
+                      {recipeComplete
+                        ? "Completado"
+                        : `${totalRecipe}/${requiredPieces}`}
                     </Badge>
-                    {recipeExpanded ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}
+                    {recipeExpanded ? (
+                      <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />
+                    )}
                   </div>
                 </button>
 
@@ -270,13 +297,17 @@ const ProductDetail = () => {
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-full flex items-center justify-center text-lg sm:text-xl">
                           🍗
                         </div>
-                        <span className="font-medium text-sm sm:text-base">Receta Original</span>
+                        <span className="font-medium text-sm sm:text-base">
+                          Receta Original
+                        </span>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setRecipeOriginal(Math.max(0, recipeOriginal - 1))}
+                          onClick={() =>
+                            setRecipeOriginal(Math.max(0, recipeOriginal - 1))
+                          }
                           className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary text-white hover:bg-primary/90"
                           disabled={recipeOriginal === 0}
                         >
@@ -288,7 +319,10 @@ const ProductDetail = () => {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => totalRecipe < requiredPieces && setRecipeOriginal(recipeOriginal + 1)}
+                          onClick={() =>
+                            totalRecipe < requiredPieces &&
+                            setRecipeOriginal(recipeOriginal + 1)
+                          }
                           className="h-7 w-7 sm:h-8 sm:w-8 rounded-full"
                           disabled={totalRecipe >= requiredPieces}
                         >
@@ -303,13 +337,17 @@ const ProductDetail = () => {
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-full flex items-center justify-center text-lg sm:text-xl">
                           🍗
                         </div>
-                        <span className="font-medium text-sm sm:text-base">Crispy</span>
+                        <span className="font-medium text-sm sm:text-base">
+                          Crispy
+                        </span>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setRecipeCrispy(Math.max(0, recipeCrispy - 1))}
+                          onClick={() =>
+                            setRecipeCrispy(Math.max(0, recipeCrispy - 1))
+                          }
                           className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary text-white hover:bg-primary/90"
                           disabled={recipeCrispy === 0}
                         >
@@ -321,7 +359,10 @@ const ProductDetail = () => {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => totalRecipe < requiredPieces && setRecipeCrispy(recipeCrispy + 1)}
+                          onClick={() =>
+                            totalRecipe < requiredPieces &&
+                            setRecipeCrispy(recipeCrispy + 1)
+                          }
                           className="h-7 w-7 sm:h-8 sm:w-8 rounded-full"
                           disabled={totalRecipe >= requiredPieces}
                         >
@@ -336,13 +377,17 @@ const ProductDetail = () => {
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-full flex items-center justify-center text-lg sm:text-xl">
                           🌶️
                         </div>
-                        <span className="font-medium text-sm sm:text-base">Picante</span>
+                        <span className="font-medium text-sm sm:text-base">
+                          Picante
+                        </span>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setRecipePicante(Math.max(0, recipePicante - 1))}
+                          onClick={() =>
+                            setRecipePicante(Math.max(0, recipePicante - 1))
+                          }
                           className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary text-white hover:bg-primary/90"
                           disabled={recipePicante === 0}
                         >
@@ -354,7 +399,10 @@ const ProductDetail = () => {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => totalRecipe < requiredPieces && setRecipePicante(recipePicante + 1)}
+                          onClick={() =>
+                            totalRecipe < requiredPieces &&
+                            setRecipePicante(recipePicante + 1)
+                          }
                           className="h-7 w-7 sm:h-8 sm:w-8 rounded-full"
                           disabled={totalRecipe >= requiredPieces}
                         >
@@ -368,21 +416,33 @@ const ProductDetail = () => {
             )}
 
             {/* Complement Selection */}
-            {(isMegaProduct || product.description?.toLowerCase().includes("complemento")) && (
+            {(isMegaProduct ||
+              product.description?.toLowerCase().includes("complemento")) && (
               <Card className="bg-white border-0 shadow-sm overflow-hidden">
                 <button
                   onClick={() => setComplementExpanded(!complementExpanded)}
                   className="w-full flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50"
                 >
                   <div className="text-left">
-                    <h3 className="font-bold text-sm sm:text-base">Elige tu complemento</h3>
-                    <p className="text-xs sm:text-sm text-gray-500">Elige 1 opción</p>
+                    <h3 className="font-bold text-sm sm:text-base">
+                      Elige tu complemento
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-500">
+                      Elige 1 opción
+                    </p>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2">
-                    <Badge variant="outline" className="text-gray-600 text-xs sm:text-sm">
+                    <Badge
+                      variant="outline"
+                      className="text-gray-600 text-xs sm:text-sm"
+                    >
                       Requerido
                     </Badge>
-                    {complementExpanded ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}
+                    {complementExpanded ? (
+                      <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />
+                    )}
                   </div>
                 </button>
 
@@ -395,21 +455,38 @@ const ProductDetail = () => {
                     <div className="flex items-center justify-between p-3 sm:p-4 border-b hover:bg-gray-50">
                       <div className="flex items-center gap-2 sm:gap-3">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-50 rounded-lg overflow-hidden">
-                          <img src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/papa-familiar-202506160431489482.jpg" alt="Papa Familiar" className="w-full h-full object-cover" />
+                          <img
+                            src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/papa-familiar-202506160431489482.jpg"
+                            alt="Papa Familiar"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                        <span className="font-medium text-sm sm:text-base">Papa Familiar</span>
+                        <span className="font-medium text-sm sm:text-base">
+                          Papa Familiar
+                        </span>
                       </div>
-                      <RadioGroupItem value="papa-familiar" id="papa-familiar" />
+                      <RadioGroupItem
+                        value="papa-familiar"
+                        id="papa-familiar"
+                      />
                     </div>
 
                     <div className="flex items-center justify-between p-3 sm:p-4 border-b hover:bg-gray-50">
                       <div className="flex items-center gap-2 sm:gap-3">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-50 rounded-lg overflow-hidden">
-                          <img src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/papa-super-familiar-202506160431519379.jpg" alt="Papa Super Familiar" className="w-full h-full object-cover" />
+                          <img
+                            src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/papa-super-familiar-202506160431519379.jpg"
+                            alt="Papa Super Familiar"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                         <div>
-                          <span className="font-medium text-sm sm:text-base">Papa Super Familiar</span>
-                          <p className="text-xs sm:text-sm text-gray-500">+ S/6.90</p>
+                          <span className="font-medium text-sm sm:text-base">
+                            Papa Super Familiar
+                          </span>
+                          <p className="text-xs sm:text-sm text-gray-500">
+                            + S/6.90
+                          </p>
                         </div>
                       </div>
                       <RadioGroupItem value="papa-super" id="papa-super" />
@@ -418,9 +495,15 @@ const ProductDetail = () => {
                     <div className="flex items-center justify-between p-3 sm:p-4 border-b hover:bg-gray-50">
                       <div className="flex items-center gap-2 sm:gap-3">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-50 rounded-lg overflow-hidden">
-                          <img src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/ensalada-familiar-202506160431528586.jpg" alt="Ensalada Familiar" className="w-full h-full object-cover" />
+                          <img
+                            src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/ensalada-familiar-202506160431528586.jpg"
+                            alt="Ensalada Familiar"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                        <span className="font-medium text-sm sm:text-base">Ensalada Familiar</span>
+                        <span className="font-medium text-sm sm:text-base">
+                          Ensalada Familiar
+                        </span>
                       </div>
                       <RadioGroupItem value="ensalada" id="ensalada" />
                     </div>
@@ -428,9 +511,15 @@ const ProductDetail = () => {
                     <div className="flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50">
                       <div className="flex items-center gap-2 sm:gap-3">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-50 rounded-lg overflow-hidden">
-                          <img src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/pure-familiar-202506201432024958.jpg" alt="Puré Familiar" className="w-full h-full object-cover" />
+                          <img
+                            src="https://delosi-pidelo.s3.amazonaws.com/kfc/products/pure-familiar-202506201432024958.jpg"
+                            alt="Puré Familiar"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                        <span className="font-medium text-sm sm:text-base">Puré Familiar</span>
+                        <span className="font-medium text-sm sm:text-base">
+                          Puré Familiar
+                        </span>
                       </div>
                       <RadioGroupItem value="pure" id="pure" />
                     </div>
@@ -446,14 +535,25 @@ const ProductDetail = () => {
                 className="w-full flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50"
               >
                 <div className="text-left">
-                  <h3 className="font-bold text-sm sm:text-base">Agranda tu Mega</h3>
-                  <p className="text-xs sm:text-sm text-gray-500">Selecciona hasta 5 artículos</p>
+                  <h3 className="font-bold text-sm sm:text-base">
+                    Agranda tu Mega
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500">
+                    Selecciona hasta 5 artículos
+                  </p>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2">
-                  <Badge variant="outline" className="text-gray-600 text-xs sm:text-sm">
+                  <Badge
+                    variant="outline"
+                    className="text-gray-600 text-xs sm:text-sm"
+                  >
                     Opcional
                   </Badge>
-                  {extrasExpanded ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}
+                  {extrasExpanded ? (
+                    <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />
+                  )}
                 </div>
               </button>
 
@@ -471,20 +571,32 @@ const ProductDetail = () => {
                             alt={item.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = "/placeholder.svg";
+                              (e.target as HTMLImageElement).src =
+                                "/placeholder.svg";
                             }}
                           />
                         </div>
-                        <span className="font-medium text-xs sm:text-sm truncate">{item.name}</span>
+                        <span className="font-medium text-xs sm:text-sm truncate">
+                          {item.name}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                        <span className="text-xs sm:text-sm text-gray-600">+ S/{item.price.toFixed(2)}</span>
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          + S/{item.price.toFixed(2)}
+                        </span>
                         <Button
-                          variant={selectedExtras.includes(item.itemId) ? "default" : "outline"}
+                          variant={
+                            selectedExtras.includes(item.itemId)
+                              ? "default"
+                              : "outline"
+                          }
                           size="icon"
                           onClick={() => handleToggleExtra(item.itemId)}
                           className="h-7 w-7 sm:h-8 sm:w-8 rounded-full"
-                          disabled={!selectedExtras.includes(item.itemId) && selectedExtras.length >= 5}
+                          disabled={
+                            !selectedExtras.includes(item.itemId) &&
+                            selectedExtras.length >= 5
+                          }
                         >
                           <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>

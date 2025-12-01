@@ -147,7 +147,9 @@ const TopProductsSection = () => {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm sm:text-lg font-bold">S/{item.price.toFixed(2)}</p>
+                  <p className="text-sm sm:text-lg font-bold">
+                    S/{item.price.toFixed(2)}
+                  </p>
                 </div>
               </Card>
             ))}
