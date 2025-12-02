@@ -41,7 +41,12 @@ const Profile = () => {
           <p className="text-sm sm:text-base text-muted-foreground mb-6">
             Accede a tu cuenta para ver tu perfil y pedidos
           </p>
-          <Button onClick={() => navigate("/auth")} className="w-full sm:w-auto">Iniciar sesión</Button>
+          <Button
+            onClick={() => navigate("/auth")}
+            className="w-full sm:w-auto"
+          >
+            Iniciar sesión
+          </Button>
         </div>
       </div>
     );
@@ -99,10 +104,19 @@ const Profile = () => {
                 {user?.name?.charAt(0) || "U"}
               </div>
               <div className="flex-1 text-center sm:text-left">
-                <h2 className="text-lg sm:text-xl font-bold">{user?.name || "Usuario"}</h2>
-                <p className="text-sm sm:text-base text-muted-foreground truncate max-w-[200px] sm:max-w-none mx-auto sm:mx-0">{user?.email}</p>
+                <h2 className="text-lg sm:text-xl font-bold">
+                  {user?.name || "Usuario"}
+                </h2>
+                <p className="text-sm sm:text-base text-muted-foreground truncate max-w-[200px] sm:max-w-none mx-auto sm:mx-0">
+                  {user?.email}
+                </p>
               </div>
-              <Button variant="outline" onClick={handleLogout} size="sm" className="w-full sm:w-auto mt-2 sm:mt-0">
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                size="sm"
+                className="w-full sm:w-auto mt-2 sm:mt-0"
+              >
                 <LogOut className="h-4 w-4 mr-2" />
                 Cerrar sesión
               </Button>
@@ -111,19 +125,31 @@ const Profile = () => {
 
           <Tabs defaultValue="orders" className="space-y-4 sm:space-y-6">
             <TabsList className="grid w-full grid-cols-4 h-auto p-1">
-              <TabsTrigger value="orders" className="gap-1 sm:gap-2 flex-col sm:flex-row py-2 px-1 sm:px-3 text-xs sm:text-sm">
+              <TabsTrigger
+                value="orders"
+                className="gap-1 sm:gap-2 flex-col sm:flex-row py-2 px-1 sm:px-3 text-xs sm:text-sm"
+              >
                 <ShoppingBag className="h-4 w-4 sm:h-4 sm:w-4" />
                 <span className="hidden xs:inline sm:inline">Pedidos</span>
               </TabsTrigger>
-              <TabsTrigger value="profile" className="gap-1 sm:gap-2 flex-col sm:flex-row py-2 px-1 sm:px-3 text-xs sm:text-sm">
+              <TabsTrigger
+                value="profile"
+                className="gap-1 sm:gap-2 flex-col sm:flex-row py-2 px-1 sm:px-3 text-xs sm:text-sm"
+              >
                 <User className="h-4 w-4 sm:h-4 sm:w-4" />
                 <span className="hidden xs:inline sm:inline">Perfil</span>
               </TabsTrigger>
-              <TabsTrigger value="addresses" className="gap-1 sm:gap-2 flex-col sm:flex-row py-2 px-1 sm:px-3 text-xs sm:text-sm">
+              <TabsTrigger
+                value="addresses"
+                className="gap-1 sm:gap-2 flex-col sm:flex-row py-2 px-1 sm:px-3 text-xs sm:text-sm"
+              >
                 <MapPin className="h-4 w-4 sm:h-4 sm:w-4" />
                 <span className="hidden xs:inline sm:inline">Direcciones</span>
               </TabsTrigger>
-              <TabsTrigger value="favorites" className="gap-1 sm:gap-2 flex-col sm:flex-row py-2 px-1 sm:px-3 text-xs sm:text-sm">
+              <TabsTrigger
+                value="favorites"
+                className="gap-1 sm:gap-2 flex-col sm:flex-row py-2 px-1 sm:px-3 text-xs sm:text-sm"
+              >
                 <Heart className="h-4 w-4 sm:h-4 sm:w-4" />
                 <span className="hidden xs:inline sm:inline">Favoritos</span>
               </TabsTrigger>
@@ -157,7 +183,11 @@ const Profile = () => {
                             <h4 className="font-bold text-sm sm:text-base">
                               #{order.orderId?.slice(-8).toUpperCase()}
                             </h4>
-                            <Badge className={`${getStatusColor(order.status)} text-xs`}>
+                            <Badge
+                              className={`${getStatusColor(
+                                order.status
+                              )} text-xs`}
+                            >
                               {getStatusLabel(order.status)}
                             </Badge>
                           </div>
@@ -180,22 +210,33 @@ const Profile = () => {
               ) : (
                 <Card className="p-8 sm:p-12 text-center">
                   <ShoppingBag className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
-                  <h4 className="text-base sm:text-lg font-bold mb-2">Sin pedidos</h4>
+                  <h4 className="text-base sm:text-lg font-bold mb-2">
+                    Sin pedidos
+                  </h4>
                   <p className="text-sm sm:text-base text-muted-foreground mb-4">
                     Aún no has realizado ningún pedido
                   </p>
-                  <Button onClick={() => navigate("/menu")} className="w-full sm:w-auto">Ver menú</Button>
+                  <Button
+                    onClick={() => navigate("/menu")}
+                    className="w-full sm:w-auto"
+                  >
+                    Ver menú
+                  </Button>
                 </Card>
               )}
             </TabsContent>
 
             {/* Profile Tab */}
             <TabsContent value="profile" className="space-y-3 sm:space-y-4">
-              <h3 className="text-base sm:text-lg font-bold">Información personal</h3>
+              <h3 className="text-base sm:text-lg font-bold">
+                Información personal
+              </h3>
               <Card className="p-4 sm:p-6">
                 <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <Label htmlFor="name" className="text-sm">Nombre completo</Label>
+                    <Label htmlFor="name" className="text-sm">
+                      Nombre completo
+                    </Label>
                     <Input
                       id="name"
                       value={profile.name}
@@ -206,7 +247,9 @@ const Profile = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email" className="text-sm">Correo electrónico</Label>
+                    <Label htmlFor="email" className="text-sm">
+                      Correo electrónico
+                    </Label>
                     <Input
                       id="email"
                       type="email"
@@ -218,7 +261,9 @@ const Profile = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="phone" className="text-sm">Teléfono</Label>
+                    <Label htmlFor="phone" className="text-sm">
+                      Teléfono
+                    </Label>
                     <Input
                       id="phone"
                       value={profile.phone}
@@ -237,8 +282,12 @@ const Profile = () => {
             {/* Addresses Tab */}
             <TabsContent value="addresses" className="space-y-3 sm:space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <h3 className="text-base sm:text-lg font-bold">Mis Direcciones</h3>
-                <Button size="sm" className="w-full sm:w-auto">Agregar dirección</Button>
+                <h3 className="text-base sm:text-lg font-bold">
+                  Mis Direcciones
+                </h3>
+                <Button size="sm" className="w-full sm:w-auto">
+                  Agregar dirección
+                </Button>
               </div>
               <Card className="p-8 sm:p-12 text-center">
                 <MapPin className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
@@ -256,11 +305,18 @@ const Profile = () => {
               <h3 className="text-base sm:text-lg font-bold">Mis Favoritos</h3>
               <Card className="p-8 sm:p-12 text-center">
                 <Heart className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
-                <h4 className="text-base sm:text-lg font-bold mb-2">Sin favoritos</h4>
+                <h4 className="text-base sm:text-lg font-bold mb-2">
+                  Sin favoritos
+                </h4>
                 <p className="text-sm sm:text-base text-muted-foreground mb-4">
                   Guarda tus productos favoritos para pedirlos más rápido
                 </p>
-                <Button onClick={() => navigate("/menu")} className="w-full sm:w-auto">Explorar menú</Button>
+                <Button
+                  onClick={() => navigate("/menu")}
+                  className="w-full sm:w-auto"
+                >
+                  Explorar menú
+                </Button>
               </Card>
             </TabsContent>
           </Tabs>
