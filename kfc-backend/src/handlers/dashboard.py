@@ -69,10 +69,8 @@ def get_dashboard_handler(event, context):
             OrderStatus.PENDING.value,
             OrderStatus.RECEIVED.value,
             OrderStatus.COOKING.value,
-            OrderStatus.COOKED.value,
             OrderStatus.PACKING.value,
-            OrderStatus.PACKED.value,
-            OrderStatus.DELIVERING.value
+            OrderStatus.DELIVERY.value
         ]
         active_orders = [o for o in filtered_orders if o.get(
             'status') in active_statuses]
@@ -264,9 +262,9 @@ def get_workflow_stats_handler(event, context):
         cooking_orders = [o for o in orders if o.get(
             'status') == OrderStatus.COOKING.value]
         packing_orders = [o for o in orders if o.get(
-            'status') in [OrderStatus.COOKED.value, OrderStatus.PACKING.value]]
+            'status') == OrderStatus.PACKING.value]
         delivery_orders = [o for o in orders if o.get(
-            'status') in [OrderStatus.PACKED.value, OrderStatus.DELIVERING.value]]
+            'status') == OrderStatus.DELIVERY.value]
 
         workflow_stats = {
             'stepAnalysis': step_averages,

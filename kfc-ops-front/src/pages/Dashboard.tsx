@@ -217,16 +217,14 @@ const Dashboard = () => {
                 status === "COMPLETED" || status === "DELIVERED";
               const isPreparing = status === "COOKING" || status === "RECEIVED";
               const isPending = status === "PENDING";
-              const isDelivery = status === "DELIVERING" || status === "PACKED";
+              const isDelivery = status === "DELIVERY";
 
               const statusLabels: Record<string, string> = {
                 PENDING: "Pendiente",
                 RECEIVED: "Recibido",
                 COOKING: "Cocinando",
-                COOKED: "Listo",
-                PACKED: "Empacado",
-                DELIVERING: "En Camino",
-                DELIVERED: "Entregado",
+                PACKING: "Empacando",
+                DELIVERY: "En Delivery",
                 COMPLETED: "Completado",
                 CANCELLED: "Cancelado",
               };

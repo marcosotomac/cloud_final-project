@@ -38,13 +38,10 @@ const mapApiStatusToUI = (apiStatus: string): UIStatus => {
     PENDING: "pending",
     RECEIVED: "kitchen",
     COOKING: "kitchen",
-    COOKED: "packing",
     PACKING: "packing",
-    PACKED: "delivery",
-    READY_FOR_DELIVERY: "delivery",
-    DELIVERING: "delivery",
-    DELIVERED: "delivery",
+    DELIVERY: "delivery",
     COMPLETED: "delivery",
+    CANCELLED: "pending",
   };
   return statusMap[normalized] || "pending";
 };

@@ -35,8 +35,13 @@ def sfn_validate_order_handler(event, context):
         validation_errors = []
 
         for item in items:
-            item_id = item.get('menuItemId')
+            item_id = item.get('itemId')  # itemId, not menuItemId
             requested_qty = item.get('quantity', 0)
+
+            # Skip validation if no item_id (shouldn't happen but be safe)
+            if not item_id:
+                print(f"[WARN] Item missing itemId: {item}")
+                continue
 
             # Check if menu item exists and is available
             try:

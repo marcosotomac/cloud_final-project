@@ -227,11 +227,11 @@ def finish_cooking_handler(event, context):
         if order.get('status') != OrderStatus.COOKING.value:
             return error_response(f'Order is not being cooked. Current status: {order.get("status")}')
 
-        # Update order status
+        # Update order status to PACKING (after cooking is done)
         updated_order = update_order_status(
             tenant_id=tenant_id,
             order_id=order_id,
-            new_status=OrderStatus.COOKED.value,
+            new_status=OrderStatus.PACKING.value,
             staff_id=staff_id,
             staff_name=staff_name,
             message=f'Comida lista por {staff_name}'
@@ -290,14 +290,14 @@ def pack_order_handler(event, context):
         if not order:
             return not_found_response('Order not found')
 
-        if order.get('status') != OrderStatus.COOKED.value:
+        if order.get('status') != OrderStatus.PACKING.value:
             return error_response(f'Order cannot be packed. Current status: {order.get("status")}')
 
-        # Update order status
+        # Update order status to DELIVERY
         updated_order = update_order_status(
             tenant_id=tenant_id,
             order_id=order_id,
-            new_status=OrderStatus.PACKED.value,
+            new_status=OrderStatus.DELIVERY.value,
             staff_id=staff_id,
             staff_name=staff_name,
             message=f'Pedido empacado por {staff_name}'
@@ -359,14 +359,14 @@ def start_delivery_handler(event, context):
         if not order:
             return not_found_response('Order not found')
 
-        if order.get('status') != OrderStatus.PACKED.value:
+        if order.get('status') != OrderStatus.PACKING.value:
             return error_response(f'Order cannot start delivery. Current status: {order.get("status")}')
 
-        # Update order status
+        # Update order status to DELIVERY
         updated_order = update_order_status(
             tenant_id=tenant_id,
             order_id=order_id,
-            new_status=OrderStatus.DELIVERING.value,
+            new_status=OrderStatus.DELIVERY.value,
             staff_id=staff_id,
             staff_name=staff_name,
             message=f'Repartidor {staff_name} en camino'

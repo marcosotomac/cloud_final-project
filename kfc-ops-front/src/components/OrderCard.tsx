@@ -27,21 +27,19 @@ const apiStatusLabels: Record<string, string> = {
   PENDING: "Pendiente",
   RECEIVED: "Recibido",
   COOKING: "En Cocina",
-  COOKED: "Listo",
-  PACKED: "Empacado",
-  DELIVERING: "En Delivery",
-  DELIVERED: "Entregado",
+  PACKING: "Empacando",
+  DELIVERY: "En Delivery",
   COMPLETED: "Completado",
+  CANCELLED: "Cancelado",
 };
 
 // Next status action labels
 const nextActionLabels: Record<string, string> = {
   PENDING: "Aceptar",
   RECEIVED: "Cocinar",
-  COOKING: "Listo",
-  COOKED: "Empacar",
-  PACKED: "Enviar",
-  DELIVERING: "Completar",
+  COOKING: "Empacar",
+  PACKING: "Enviar",
+  DELIVERY: "Completar",
 };
 
 const statusConfig = {

@@ -363,10 +363,10 @@ def track_order_handler(event, context):
         estimated_time = None
         if current_status in ['PENDING', 'RECEIVED', 'COOKING']:
             estimated_time = 25  # minutes
-        elif current_status in ['COOKED', 'PACKING', 'PACKED']:
+        elif current_status in ['PACKING', 'DELIVERY']:
             estimated_time = 15
-        elif current_status == 'DELIVERING':
-            estimated_time = 10
+        elif current_status == 'COMPLETED':
+            estimated_time = 0
 
         return success_response({
             'orderId': order_id,
