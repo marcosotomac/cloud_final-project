@@ -620,6 +620,8 @@ resources:
                     "FunctionName": "${SfnReceiveOrderArn}",
                     "Payload.$": "$"
                   },
+                  "ResultPath": "$.lambdaResult",
+                  "OutputPath": "$",
                   "Retry": [
                     {
                       "ErrorEquals": ["States.TaskFailed"],
@@ -643,6 +645,8 @@ resources:
                     "FunctionName": "${SfnCookingArn}",
                     "Payload.$": "$"
                   },
+                  "ResultPath": "$.lambdaResult",
+                  "OutputPath": "$",
                   "Retry": [
                     {
                       "ErrorEquals": ["States.TaskFailed"],
@@ -666,6 +670,8 @@ resources:
                     "FunctionName": "${SfnPackingArn}",
                     "Payload.$": "$"
                   },
+                  "ResultPath": "$.lambdaResult",
+                  "OutputPath": "$",
                   "Retry": [
                     {
                       "ErrorEquals": ["States.TaskFailed"],
@@ -689,6 +695,8 @@ resources:
                     "FunctionName": "${SfnDeliveryArn}",
                     "Payload.$": "$"
                   },
+                  "ResultPath": "$.lambdaResult",
+                  "OutputPath": "$",
                   "Retry": [
                     {
                       "ErrorEquals": ["States.TaskFailed"],
@@ -712,6 +720,8 @@ resources:
                     "FunctionName": "${SfnCompleteOrderArn}",
                     "Payload.$": "$"
                   },
+                  "ResultPath": "$.lambdaResult",
+                  "OutputPath": "$",
                   "Retry": [
                     {
                       "ErrorEquals": ["States.TaskFailed"],

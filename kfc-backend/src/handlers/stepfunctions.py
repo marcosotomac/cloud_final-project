@@ -108,6 +108,7 @@ def sfn_cook_order_handler(event, context):
             order_data=order
         )
 
+        # Return input data preserved for next state
         return {
             'orderId': order_id,
             'tenantId': tenant_id,
@@ -163,6 +164,7 @@ def sfn_pack_order_handler(event, context):
             order_data=order
         )
 
+        # Return input data preserved for next state
         return {
             'orderId': order_id,
             'tenantId': tenant_id,
