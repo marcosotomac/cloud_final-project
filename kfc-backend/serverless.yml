@@ -620,8 +620,11 @@ resources:
                     "FunctionName": "${SfnReceiveOrderArn}",
                     "Payload.$": "$"
                   },
-                  "ResultPath": "$.lambdaResult",
-                  "OutputPath": "$",
+                  "ResultSelector": {
+                    "orderId.$": "$.Payload.orderId",
+                    "tenantId.$": "$.Payload.tenantId",
+                    "status.$": "$.Payload.status"
+                  },
                   "Retry": [
                     {
                       "ErrorEquals": ["States.TaskFailed"],
@@ -645,8 +648,11 @@ resources:
                     "FunctionName": "${SfnCookingArn}",
                     "Payload.$": "$"
                   },
-                  "ResultPath": "$.lambdaResult",
-                  "OutputPath": "$",
+                  "ResultSelector": {
+                    "orderId.$": "$.Payload.orderId",
+                    "tenantId.$": "$.Payload.tenantId",
+                    "status.$": "$.Payload.status"
+                  },
                   "Retry": [
                     {
                       "ErrorEquals": ["States.TaskFailed"],
@@ -670,8 +676,11 @@ resources:
                     "FunctionName": "${SfnPackingArn}",
                     "Payload.$": "$"
                   },
-                  "ResultPath": "$.lambdaResult",
-                  "OutputPath": "$",
+                  "ResultSelector": {
+                    "orderId.$": "$.Payload.orderId",
+                    "tenantId.$": "$.Payload.tenantId",
+                    "status.$": "$.Payload.status"
+                  },
                   "Retry": [
                     {
                       "ErrorEquals": ["States.TaskFailed"],
@@ -695,8 +704,11 @@ resources:
                     "FunctionName": "${SfnDeliveryArn}",
                     "Payload.$": "$"
                   },
-                  "ResultPath": "$.lambdaResult",
-                  "OutputPath": "$",
+                  "ResultSelector": {
+                    "orderId.$": "$.Payload.orderId",
+                    "tenantId.$": "$.Payload.tenantId",
+                    "status.$": "$.Payload.status"
+                  },
                   "Retry": [
                     {
                       "ErrorEquals": ["States.TaskFailed"],
@@ -720,8 +732,11 @@ resources:
                     "FunctionName": "${SfnCompleteOrderArn}",
                     "Payload.$": "$"
                   },
-                  "ResultPath": "$.lambdaResult",
-                  "OutputPath": "$",
+                  "ResultSelector": {
+                    "orderId.$": "$.Payload.orderId",
+                    "tenantId.$": "$.Payload.tenantId",
+                    "status.$": "$.Payload.status"
+                  },
                   "Retry": [
                     {
                       "ErrorEquals": ["States.TaskFailed"],
