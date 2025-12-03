@@ -32,12 +32,11 @@ def sfn_validate_order_handler(event, context):
         if not order_data:
             raise Exception(f'Missing order data')
 
-        # Validate items: check stock and prices
+        # Validate items: check prices and availability (lenient validation)
         items = order_data.get('items', [])
         menu_table = get_menu_table()
-        inventory_table = get_inventory_table()
 
-        validation_errors = []
+        validation_warnings = []
 
         for item in items:
             item_id = item.get('itemId')  # itemId, not menuItemId
@@ -48,69 +47,47 @@ def sfn_validate_order_handler(event, context):
                 print(f"[WARN] Item missing itemId: {item}")
                 continue
 
-            # Check if menu item exists and is available
+            # Check if menu item exists and verify price
             try:
                 menu_item = get_item(menu_table, {
                     'PK': f'TENANT#{tenant_id}',
-                    'SK': f'MENU#{item_id}'
+                    'SK': f'ITEM#{item_id}'
                 })
 
-                if not menu_item:
-                    validation_errors.append(f"Menu item {item_id} not found")
-                    continue
+                if menu_item:
+                    # Check if available
+                    if not menu_item.get('isAvailable', True):
+                        print(f"[WARN] Menu item {menu_item.get('name')} is not available")
+                        validation_warnings.append(f"Item '{menu_item.get('name')}' may not be available")
 
-                if not menu_item.get('available', True):
-                    validation_errors.append(f"Menu item {menu_item.get('name')} is not available")
-                    continue
-
-                # Verify price hasn't changed dramatically
-                stored_price = menu_item.get('price', 0)
-                received_price = item.get('price', 0)
-                price_diff = abs(stored_price - received_price)
-                if price_diff > stored_price * 0.1:  # 10% tolerance
-                    print(f"[WARN] Price mismatch for {item_id}: stored={stored_price}, received={received_price}")
+                    # Verify price hasn't changed dramatically (±10% tolerance)
+                    stored_price = menu_item.get('price', 0)
+                    received_price = item.get('price', 0)
+                    if stored_price > 0:
+                        price_diff_percent = abs(stored_price - received_price) / stored_price * 100
+                        if price_diff_percent > 10:
+                            print(f"[WARN] Price mismatch for {item_id}: stored={stored_price}, received={received_price}, diff={price_diff_percent:.1f}%")
+                            validation_warnings.append(f"Price for '{item.get('name')}' may have changed")
+                else:
+                    print(f"[WARN] Menu item {item_id} not found in menu")
+                    validation_warnings.append(f"Item '{item.get('name')}' not found in menu")
 
             except Exception as menu_error:
                 print(f"[WARN] Could not validate menu item {item_id}: {str(menu_error)}")
 
-        # If there are validation errors, cancel the order
-        if validation_errors:
-            print(f"SFN ValidateOrder - Validation failed: {validation_errors}")
-            orders_table = get_orders_table()
-            now = datetime.utcnow().isoformat()
+        # Log warnings but don't cancel - allow order to proceed
+        if validation_warnings:
+            print(f"SFN ValidateOrder - Warnings: {validation_warnings}")
 
-            update_item(
-                orders_table,
-                {'PK': f'TENANT#{tenant_id}', 'SK': f'ORDER#{order_id}'},
-                'SET #status = :status, updatedAt = :now, #reason = :reason',
-                {
-                    ':status': OrderStatus.CANCELLED.value,
-                    ':now': now,
-                    ':reason': ', '.join(validation_errors)
-                },
-                {
-                    '#status': 'status',
-                    '#reason': 'cancellationReason'
-                }
-            )
-
-            broadcast_order_update(
-                tenant_id=tenant_id,
-                order_id=order_id,
-                status=OrderStatus.CANCELLED.value,
-                order_data={**order_data, 'status': OrderStatus.CANCELLED.value}
-            )
-
-            raise Exception(f"Order validation failed: {', '.join(validation_errors)}")
-
-        print(f"SFN ValidateOrder - Validation passed")
+        print(f"SFN ValidateOrder - Validation completed (warnings only, proceeding)")
 
         result = {
             'orderId': order_id,
             'tenantId': tenant_id,
             'order': order_data,
             'status': 'VALIDATED',
-            'validatedAt': datetime.utcnow().isoformat()
+            'validatedAt': datetime.utcnow().isoformat(),
+            'warnings': validation_warnings
         }
 
         print(f"SFN ValidateOrder - Returning: {json.dumps(result)}")
