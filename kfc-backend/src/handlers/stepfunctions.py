@@ -5,9 +5,14 @@ Simplified handlers for: RECEIVED -> COOKING -> PACKING -> DELIVERY -> COMPLETED
 import json
 from datetime import datetime
 
-from src.utils.dynamodb import get_orders_table, get_item, update_item, get_menu_table, get_inventory_table
+from src.utils.dynamodb import get_orders_table, get_item, update_item, get_menu_table
 from src.utils.websocket import broadcast_order_update
 from src.models.order_status import OrderStatus
+
+
+def get_inventory_table():
+    """Get the inventory table (using Orders table with INVENTORY# prefix)"""
+    return get_orders_table()
 
 
 def sfn_validate_order_handler(event, context):
