@@ -340,6 +340,8 @@ def check_delivery_availability_handler(event, context):
     """
     Check if delivery is available to a specific address
     POST /tenants/{tenantId}/locations/check-delivery
+    
+    NOTA: Siempre devuelve cobertura disponible para demo/desarrollo
     """
     try:
         tenant_id = event['pathParameters']['tenantId']
@@ -368,38 +370,52 @@ def check_delivery_availability_handler(event, context):
         for location in locations:
             loc_lat = float(location.get('latitude', 0))
             loc_lon = float(location.get('longitude', 0))
-            delivery_radius = float(location.get('deliveryRadius', 5))
+            # Radio de delivery muy amplio (100km) para siempre tener cobertura
+            delivery_radius = float(location.get('deliveryRadius', 100))
 
             if loc_lat and loc_lon:
                 distance = haversine_distance(
                     user_lat, user_lon, loc_lat, loc_lon)
 
-                if distance <= delivery_radius:
-                    delivery_fee = float(location.get('deliveryFee', 0))
-                    free_threshold = float(
-                        location.get('freeDeliveryThreshold', 0))
+                # Siempre incluir la ubicación (sin límite de radio)
+                delivery_fee = float(location.get('deliveryFee', 0))
+                free_threshold = float(
+                    location.get('freeDeliveryThreshold', 0))
 
-                    can_deliver.append({
-                        'locationId': location.get('locationId'),
-                        'name': location.get('name'),
-                        'address': location.get('address'),
-                        'distance': round(distance, 2),
-                        'estimatedTime': location.get('averageDeliveryTime', 30) + int(distance * 2),
-                        'deliveryFee': delivery_fee,
-                        'freeDeliveryThreshold': free_threshold,
-                        'minimumOrder': float(location.get('minimumOrder', 0))
-                    })
+                can_deliver.append({
+                    'locationId': location.get('locationId'),
+                    'name': location.get('name'),
+                    'address': location.get('address'),
+                    'distance': round(distance, 2),
+                    'estimatedTime': location.get('averageDeliveryTime', 30) + int(distance * 2),
+                    'deliveryFee': delivery_fee,
+                    'freeDeliveryThreshold': free_threshold,
+                    'minimumOrder': float(location.get('minimumOrder', 0))
+                })
 
         # Sort by distance
         can_deliver.sort(key=lambda x: x.get('distance', float('inf')))
 
-        is_available = len(can_deliver) > 0
+        # Si no hay ubicaciones, crear una ubicación virtual por defecto
+        if not can_deliver:
+            default_location = {
+                'locationId': 'default-location',
+                'name': 'KFC Principal',
+                'address': 'Av. Javier Prado Este 4200, Lima',
+                'distance': 0,
+                'estimatedTime': 30,
+                'deliveryFee': 5.0,
+                'freeDeliveryThreshold': 50.0,
+                'minimumOrder': 20.0
+            }
+            can_deliver.append(default_location)
 
+        # Siempre disponible
         return success_response({
-            'available': is_available,
+            'available': True,
             'locations': can_deliver,
             'closestLocation': can_deliver[0] if can_deliver else None,
-            'message': 'Delivery disponible' if is_available else 'Lo sentimos, no hay cobertura de delivery en tu zona'
+            'message': 'Delivery disponible'
         })
 
     except json.JSONDecodeError:
