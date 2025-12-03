@@ -6,16 +6,12 @@ from typing import List
 
 
 class OrderStatus(Enum):
-    """Order status enumeration"""
+    """Order status enumeration - Simplified for automated workflow"""
     PENDING = "PENDING"                 # Order placed by customer
-    RECEIVED = "RECEIVED"               # Order received by restaurant
+    RECEIVED = "RECEIVED"               # Order received and will start cooking
     COOKING = "COOKING"                 # Cook is preparing the order
-    COOKED = "COOKED"                   # Food is ready
-    PACKING = "PACKING"                 # Dispatcher is packing
-    PACKED = "PACKED"                   # Order is packed
-    READY_FOR_DELIVERY = "READY_FOR_DELIVERY"  # Ready for delivery
-    DELIVERING = "DELIVERING"           # Delivery in progress
-    DELIVERED = "DELIVERED"             # Delivered to customer
+    PACKING = "PACKING"                 # Dispatcher is packing the order
+    DELIVERY = "DELIVERY"               # Ready for delivery / Delivering
     COMPLETED = "COMPLETED"             # Order completed
     CANCELLED = "CANCELLED"             # Order cancelled
 
@@ -41,7 +37,7 @@ WORKFLOW_STEPS = [
     {
         'status': OrderStatus.RECEIVED.value,
         'name': 'Pedido Recibido',
-        'description': 'El restaurante ha recibido el pedido',
+        'description': 'El restaurante está preparando el pedido',
         'icon': 'inbox'
     },
     {
@@ -51,34 +47,16 @@ WORKFLOW_STEPS = [
         'icon': 'fire'
     },
     {
-        'status': OrderStatus.COOKED.value,
-        'name': 'Comida Lista',
-        'description': 'La comida está lista',
-        'icon': 'check-circle'
-    },
-    {
         'status': OrderStatus.PACKING.value,
         'name': 'Empacando',
         'description': 'El despachador está empacando el pedido',
         'icon': 'package'
     },
     {
-        'status': OrderStatus.PACKED.value,
-        'name': 'Empacado',
-        'description': 'El pedido está empacado y listo',
-        'icon': 'box'
-    },
-    {
-        'status': OrderStatus.DELIVERING.value,
-        'name': 'En Camino',
-        'description': 'El repartidor está en camino',
+        'status': OrderStatus.DELIVERY.value,
+        'name': 'Entrega',
+        'description': 'El pedido está siendo entregado',
         'icon': 'truck'
-    },
-    {
-        'status': OrderStatus.DELIVERED.value,
-        'name': 'Entregado',
-        'description': 'El pedido ha sido entregado',
-        'icon': 'home'
     },
     {
         'status': OrderStatus.COMPLETED.value,
@@ -103,11 +81,8 @@ def get_next_status(current_status: str) -> str:
         OrderStatus.PENDING.value,
         OrderStatus.RECEIVED.value,
         OrderStatus.COOKING.value,
-        OrderStatus.COOKED.value,
         OrderStatus.PACKING.value,
-        OrderStatus.PACKED.value,
-        OrderStatus.DELIVERING.value,
-        OrderStatus.DELIVERED.value,
+        OrderStatus.DELIVERY.value,
         OrderStatus.COMPLETED.value
     ]
 
@@ -161,12 +136,8 @@ def get_status_display_name(status: str) -> str:
         OrderStatus.PENDING.value: 'Pendiente',
         OrderStatus.RECEIVED.value: 'Recibido',
         OrderStatus.COOKING.value: 'Cocinando',
-        OrderStatus.COOKED.value: 'Cocinado',
         OrderStatus.PACKING.value: 'Empacando',
-        OrderStatus.PACKED.value: 'Empacado',
-        OrderStatus.READY_FOR_DELIVERY.value: 'Listo para Envío',
-        OrderStatus.DELIVERING.value: 'En Camino',
-        OrderStatus.DELIVERED.value: 'Entregado',
+        OrderStatus.DELIVERY.value: 'En Entrega',
         OrderStatus.COMPLETED.value: 'Completado',
         OrderStatus.CANCELLED.value: 'Cancelado'
     }

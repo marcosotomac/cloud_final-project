@@ -107,6 +107,14 @@ def create_order_handler(event, context):
         except Exception as event_error:
             print(f"EventBridge publish error: {str(event_error)}")
 
+        # Start automated workflow with Step Functions
+        try:
+            start_order_workflow(tenant_id, order_id, order)
+            print(f"Step Functions workflow started for order {order_id}")
+        except Exception as sfn_error:
+            print(f"Step Functions error: {str(sfn_error)}")
+            # Don't fail the order creation if Step Functions fails
+
         return created_response(order, 'Order created successfully')
 
     except json.JSONDecodeError:

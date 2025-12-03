@@ -48,6 +48,7 @@ provider:
     ORDER_EVENTS_BUS: kfc-events-${self:provider.stage}
     ORDERS_QUEUE_URL: !Ref OrdersQueue
     NOTIFICATIONS_TOPIC_ARN: !Ref NotificationsTopic
+    STATE_MACHINE_ARN: !Ref OrderWorkflowStateMachine
     ASSETS_BUCKET: kfc-assets-${self:provider.stage}-595645243021
     WEBSOCKET_API_ENDPOINT:
       Fn::Sub: "https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
@@ -572,8 +573,159 @@ functions:
           arn: !Ref NotificationsTopic
           topicName: kfc-notifications-${self:provider.stage}
 
+  # ==================== STEP FUNCTIONS TASKS ====================
+  sfnReceiveOrder:
+    handler: src/handlers/stepfunctions.sfn_receive_order_handler
+    timeout: 30
+
+  sfnCooking:
+    handler: src/handlers/stepfunctions.sfn_cook_order_handler
+    timeout: 30
+
+  sfnPacking:
+    handler: src/handlers/stepfunctions.sfn_pack_order_handler
+    timeout: 30
+
+  sfnDelivery:
+    handler: src/handlers/stepfunctions.sfn_deliver_order_handler
+    timeout: 30
+
+  sfnCompleteOrder:
+    handler: src/handlers/stepfunctions.sfn_complete_order_handler
+    timeout: 30
+
 resources:
   Resources:
+    # ==================== STEP FUNCTIONS STATE MACHINE ====================
+    OrderWorkflowStateMachine:
+      Type: AWS::StepFunctions::StateMachine
+      Properties:
+        StateMachineType: STANDARD
+        RoleArn: arn:aws:iam::595645243021:role/LabRole
+        DefinitionString: !Sub
+          - |
+            {
+              "Comment": "KFC Automated Order Workflow - Simplified",
+              "StartAt": "ReceiveOrder",
+              "States": {
+                "ReceiveOrder": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "Parameters": {
+                    "FunctionName": "${SfnReceiveOrderArn}",
+                    "Payload.$": "$"
+                  },
+                  "Retry": [
+                    {
+                      "ErrorEquals": ["States.TaskFailed"],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 2,
+                      "BackoffRate": 2.0
+                    }
+                  ],
+                  "Next": "WaitForCooking",
+                  "TimeoutSeconds": 60
+                },
+                "WaitForCooking": {
+                  "Type": "Wait",
+                  "Seconds": 10,
+                  "Next": "StartCooking"
+                },
+                "StartCooking": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "Parameters": {
+                    "FunctionName": "${SfnCookingArn}",
+                    "Payload.$": "$"
+                  },
+                  "Retry": [
+                    {
+                      "ErrorEquals": ["States.TaskFailed"],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 2,
+                      "BackoffRate": 2.0
+                    }
+                  ],
+                  "Next": "WaitForPacking",
+                  "TimeoutSeconds": 60
+                },
+                "WaitForPacking": {
+                  "Type": "Wait",
+                  "Seconds": 10,
+                  "Next": "StartPacking"
+                },
+                "StartPacking": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "Parameters": {
+                    "FunctionName": "${SfnPackingArn}",
+                    "Payload.$": "$"
+                  },
+                  "Retry": [
+                    {
+                      "ErrorEquals": ["States.TaskFailed"],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 2,
+                      "BackoffRate": 2.0
+                    }
+                  ],
+                  "Next": "WaitForDelivery",
+                  "TimeoutSeconds": 60
+                },
+                "WaitForDelivery": {
+                  "Type": "Wait",
+                  "Seconds": 5,
+                  "Next": "StartDelivery"
+                },
+                "StartDelivery": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "Parameters": {
+                    "FunctionName": "${SfnDeliveryArn}",
+                    "Payload.$": "$"
+                  },
+                  "Retry": [
+                    {
+                      "ErrorEquals": ["States.TaskFailed"],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 2,
+                      "BackoffRate": 2.0
+                    }
+                  ],
+                  "Next": "WaitForCompletion",
+                  "TimeoutSeconds": 60
+                },
+                "WaitForCompletion": {
+                  "Type": "Wait",
+                  "Seconds": 10,
+                  "Next": "CompleteOrder"
+                },
+                "CompleteOrder": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "Parameters": {
+                    "FunctionName": "${SfnCompleteOrderArn}",
+                    "Payload.$": "$"
+                  },
+                  "Retry": [
+                    {
+                      "ErrorEquals": ["States.TaskFailed"],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 2,
+                      "BackoffRate": 2.0
+                    }
+                  ],
+                  "End": true,
+                  "TimeoutSeconds": 60
+                }
+              }
+            }
+          - SfnReceiveOrderArn: !GetAtt SfnReceiveOrderLambdaFunction.Arn
+            SfnCookingArn: !GetAtt SfnCookingLambdaFunction.Arn
+            SfnPackingArn: !GetAtt SfnPackingLambdaFunction.Arn
+            SfnDeliveryArn: !GetAtt SfnDeliveryLambdaFunction.Arn
+            SfnCompleteOrderArn: !GetAtt SfnCompleteOrderLambdaFunction.Arn
+
     # ==================== DYNAMODB TABLES ====================
     OrdersTable:
       Type: AWS::DynamoDB::Table
@@ -806,3 +958,8 @@ resources:
 
     AssetsBucketName:
       Value: !Ref AssetsBucket
+
+    OrderWorkflowStateMachineArn:
+      Description: "Order Workflow State Machine ARN"
+      Value: !Ref OrderWorkflowStateMachine
+
