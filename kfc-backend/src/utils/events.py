@@ -141,18 +141,25 @@ def start_order_workflow(
     Returns:
         Step Functions response
     """
+    print(f"[START_WORKFLOW] Starting workflow for order {order_id}, tenant {tenant_id}")
+    
     # Build the State Machine ARN dynamically to avoid circular dependency
     region = os.environ.get('REGION', 'us-east-1')
     stage = os.environ.get('STAGE', 'dev')
+    print(f"[START_WORKFLOW] Region: {region}, Stage: {stage}")
+    
     # AWS Account ID from STS
     try:
         sts = boto3.client('sts')
         account_id = sts.get_caller_identity()['Account']
-    except:
+        print(f"[START_WORKFLOW] Account ID from STS: {account_id}")
+    except Exception as sts_error:
         # Fallback if STS fails
         account_id = '595645243021'
+        print(f"[START_WORKFLOW] STS Error, using fallback account: {account_id}. Error: {str(sts_error)}")
     
     state_machine_arn = f"arn:aws:states:{region}:{account_id}:stateMachine:kfc-core-{stage}-OrderWorkflowStateMachine"
+    print(f"[START_WORKFLOW] State Machine ARN: {state_machine_arn}")
 
     input_data = {
         'tenantId': tenant_id,
@@ -161,13 +168,24 @@ def start_order_workflow(
         'startTime': datetime.utcnow().isoformat()
     }
 
-    response = stepfunctions.start_execution(
-        stateMachineArn=state_machine_arn,
-        name=f"{tenant_id}-{order_id}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
-        input=json.dumps(input_data)
-    )
+    print(f"[START_WORKFLOW] Input data: {json.dumps(input_data, default=str)}")
 
-    return response
+    try:
+        execution_name = f"{tenant_id}-{order_id}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        print(f"[START_WORKFLOW] Starting execution with name: {execution_name}")
+        
+        response = stepfunctions.start_execution(
+            stateMachineArn=state_machine_arn,
+            name=execution_name,
+            input=json.dumps(input_data, default=str)
+        )
+        
+        print(f"[START_WORKFLOW] Execution started successfully. ExecutionArn: {response.get('executionArn')}")
+        return response
+    except Exception as e:
+        error_msg = f"[START_WORKFLOW] Failed to start execution: {str(e)}"
+        print(error_msg)
+        raise Exception(error_msg)
 
 
 def send_task_success(task_token: str, output: Dict[str, Any]) -> Dict[str, Any]:
