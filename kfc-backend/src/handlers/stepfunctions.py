@@ -5,9 +5,111 @@ Simplified handlers for: RECEIVED -> COOKING -> PACKING -> DELIVERY -> COMPLETED
 import json
 from datetime import datetime
 
-from src.utils.dynamodb import get_orders_table, get_item, update_item
+from src.utils.dynamodb import get_orders_table, get_item, update_item, get_menu_table, get_inventory_table
 from src.utils.websocket import broadcast_order_update
 from src.models.order_status import OrderStatus
+
+
+def sfn_validate_order_handler(event, context):
+    """Step Functions task: Validate order (stock, price, availability)"""
+    try:
+        print(f"SFN ValidateOrder - Raw Event: {json.dumps(event)}")
+
+        order_id = event.get('orderId')
+        tenant_id = event.get('tenantId')
+        order_data = event.get('order', {})
+
+        print(f"SFN ValidateOrder - Extracted: orderId={order_id}, tenantId={tenant_id}")
+
+        if not order_id or not tenant_id:
+            raise Exception(f'Missing orderId or tenantId')
+
+        if not order_data:
+            raise Exception(f'Missing order data')
+
+        # Validate items: check stock and prices
+        items = order_data.get('items', [])
+        menu_table = get_menu_table()
+        inventory_table = get_inventory_table()
+
+        validation_errors = []
+
+        for item in items:
+            item_id = item.get('menuItemId')
+            requested_qty = item.get('quantity', 0)
+
+            # Check if menu item exists and is available
+            try:
+                menu_item = get_item(menu_table, {
+                    'PK': f'TENANT#{tenant_id}',
+                    'SK': f'MENU#{item_id}'
+                })
+
+                if not menu_item:
+                    validation_errors.append(f"Menu item {item_id} not found")
+                    continue
+
+                if not menu_item.get('available', True):
+                    validation_errors.append(f"Menu item {menu_item.get('name')} is not available")
+                    continue
+
+                # Verify price hasn't changed dramatically
+                stored_price = menu_item.get('price', 0)
+                received_price = item.get('price', 0)
+                price_diff = abs(stored_price - received_price)
+                if price_diff > stored_price * 0.1:  # 10% tolerance
+                    print(f"[WARN] Price mismatch for {item_id}: stored={stored_price}, received={received_price}")
+
+            except Exception as menu_error:
+                print(f"[WARN] Could not validate menu item {item_id}: {str(menu_error)}")
+
+        # If there are validation errors, cancel the order
+        if validation_errors:
+            print(f"SFN ValidateOrder - Validation failed: {validation_errors}")
+            orders_table = get_orders_table()
+            now = datetime.utcnow().isoformat()
+
+            update_item(
+                orders_table,
+                {'PK': f'TENANT#{tenant_id}', 'SK': f'ORDER#{order_id}'},
+                'SET #status = :status, updatedAt = :now, #reason = :reason',
+                {
+                    ':status': OrderStatus.CANCELLED.value,
+                    ':now': now,
+                    ':reason': ', '.join(validation_errors)
+                },
+                {
+                    '#status': 'status',
+                    '#reason': 'cancellationReason'
+                }
+            )
+
+            broadcast_order_update(
+                tenant_id=tenant_id,
+                order_id=order_id,
+                status=OrderStatus.CANCELLED.value,
+                order_data={**order_data, 'status': OrderStatus.CANCELLED.value}
+            )
+
+            raise Exception(f"Order validation failed: {', '.join(validation_errors)}")
+
+        print(f"SFN ValidateOrder - Validation passed")
+
+        result = {
+            'orderId': order_id,
+            'tenantId': tenant_id,
+            'order': order_data,
+            'status': 'VALIDATED',
+            'validatedAt': datetime.utcnow().isoformat()
+        }
+
+        print(f"SFN ValidateOrder - Returning: {json.dumps(result)}")
+        return result
+
+    except Exception as e:
+        error_msg = f"SFN ValidateOrder error: {str(e)}"
+        print(error_msg)
+        raise Exception(error_msg)
 
 
 def sfn_receive_order_handler(event, context):

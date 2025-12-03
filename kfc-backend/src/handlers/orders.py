@@ -88,7 +88,7 @@ def create_order_handler(event, context):
                 'steps': [],
                 'assignedStaff': {}
             },
-            'estimatedDeliveryTime': body.get('estimatedDeliveryTime', 45),
+            'estimatedDeliveryTime': body.get('estimatedDeliveryTime', 45),  # 45 minutos por defecto
             'createdAt': now,
             'updatedAt': now
         }

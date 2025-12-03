@@ -573,6 +573,10 @@ functions:
           topicName: kfc-notifications-${self:provider.stage}
 
   # ==================== STEP FUNCTIONS TASKS ====================
+  sfnValidateOrder:
+    handler: src/handlers/stepfunctions.sfn_validate_order_handler
+    timeout: 30
+
   sfnReceiveOrder:
     handler: src/handlers/stepfunctions.sfn_receive_order_handler
     timeout: 30
@@ -599,6 +603,7 @@ resources:
     OrderWorkflowStateMachine:
       Type: AWS::StepFunctions::StateMachine
       DependsOn:
+        - SfnValidateOrderLambdaFunction
         - SfnReceiveOrderLambdaFunction
         - SfnCookingLambdaFunction
         - SfnPackingLambdaFunction
@@ -612,8 +617,42 @@ resources:
           - |
             {
               "Comment": "KFC Automated Order Workflow - Simplified",
-              "StartAt": "ReceiveOrder",
+              "StartAt": "ValidateOrder",
               "States": {
+                "ValidateOrder": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "Parameters": {
+                    "FunctionName": "${SfnValidateOrderArn}",
+                    "Payload.$": "$"
+                  },
+                  "ResultSelector": {
+                    "orderId.$": "$.Payload.orderId",
+                    "tenantId.$": "$.Payload.tenantId",
+                    "status.$": "$.Payload.status"
+                  },
+                  "Catch": [
+                    {
+                      "ErrorEquals": ["States.ALL"],
+                      "Next": "ValidationFailed"
+                    }
+                  ],
+                  "Retry": [
+                    {
+                      "ErrorEquals": ["States.TaskFailed"],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 1,
+                      "BackoffRate": 2.0
+                    }
+                  ],
+                  "Next": "ReceiveOrder",
+                  "TimeoutSeconds": 60
+                },
+                "ValidationFailed": {
+                  "Type": "Fail",
+                  "Error": "OrderValidationFailed",
+                  "Cause": "Order validation failed - check inventory, pricing, or availability"
+                },
                 "ReceiveOrder": {
                   "Type": "Task",
                   "Resource": "arn:aws:states:::lambda:invoke",
@@ -751,7 +790,8 @@ resources:
                 }
               }
             }
-          - SfnReceiveOrderArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnReceiveOrder"
+          - SfnValidateOrderArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnValidateOrder"
+            SfnReceiveOrderArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnReceiveOrder"
             SfnCookingArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnCooking"
             SfnPackingArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnPacking"
             SfnDeliveryArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnDelivery"

@@ -101,14 +101,18 @@ def create_inventory_item_handler(event, context):
         body = json.loads(event.get('body', '{}'))
 
         # Validate required fields
-        required_fields = ['name', 'unit',
-                           'quantity', 'minQuantity', 'maxQuantity']
+        required_fields = ['name', 'unit', 'quantity']
         for field in required_fields:
             if field not in body:
                 return error_response(f'Missing required field: {field}')
 
         item_id = str(ulid.new())
         now = datetime.utcnow().isoformat()
+
+        # If minQuantity/maxQuantity not provided, use defaults based on quantity
+        quantity = body['quantity']
+        min_quantity = body.get('minQuantity', max(1, int(quantity * 0.2)))  # 20% of quantity
+        max_quantity = body.get('maxQuantity', int(quantity * 1.5))  # 150% of quantity
 
         item = {
             'PK': f'TENANT#{tenant_id}',
@@ -118,10 +122,10 @@ def create_inventory_item_handler(event, context):
             'name': body['name'],
             'category': body.get('category', 'general'),
             'unit': body['unit'],
-            'quantity': body['quantity'],
-            'minQuantity': body['minQuantity'],
-            'maxQuantity': body['maxQuantity'],
-            'criticalQuantity': body.get('criticalQuantity', body['minQuantity'] // 2),
+            'quantity': quantity,
+            'minQuantity': min_quantity,
+            'maxQuantity': max_quantity,
+            'criticalQuantity': body.get('criticalQuantity', max(1, min_quantity // 2)),
             'costPerUnit': body.get('costPerUnit', 0),
             'supplier': body.get('supplier', ''),
             'lastRestocked': now,
