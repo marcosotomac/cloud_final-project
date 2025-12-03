@@ -39,10 +39,40 @@ class LocationService {
   async checkDeliveryAvailability(
     address: Address
   ): Promise<ApiResponse<DeliveryCheck>> {
-    return apiClient.post<DeliveryCheck>(
-      ENDPOINTS.LOCATIONS_CHECK_DELIVERY(this.tenantId),
-      { address }
-    );
+    // El backend espera latitude y longitude directamente
+    const response = await apiClient.post<{
+      available: boolean;
+      locations: any[];
+      closestLocation: any;
+      message: string;
+    }>(ENDPOINTS.LOCATIONS_CHECK_DELIVERY(this.tenantId), {
+      latitude: address.lat,
+      longitude: address.lng,
+    });
+
+    // Transformar la respuesta del backend al formato esperado por el frontend
+    if (response.success && response.data) {
+      const backendData = response.data;
+      return {
+        ...response,
+        data: {
+          available: backendData.available,
+          covered: backendData.available, // Mapear available a covered
+          estimatedTime: backendData.closestLocation?.estimatedTime,
+          deliveryFee: backendData.closestLocation?.deliveryFee,
+          message: backendData.message,
+          nearestLocation: backendData.closestLocation
+            ? {
+                locationId: backendData.closestLocation.locationId,
+                name: backendData.closestLocation.name,
+                distance: backendData.closestLocation.distance,
+              }
+            : undefined,
+        },
+      };
+    }
+
+    return response as ApiResponse<DeliveryCheck>;
   }
 
   async getPaymentMethods(): Promise<
