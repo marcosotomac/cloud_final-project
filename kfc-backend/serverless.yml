@@ -633,7 +633,7 @@ resources:
                 },
                 "WaitForCooking": {
                   "Type": "Wait",
-                  "Seconds": 10,
+                  "Seconds": 30,
                   "Next": "StartCooking"
                 },
                 "StartCooking": {
@@ -656,7 +656,7 @@ resources:
                 },
                 "WaitForPacking": {
                   "Type": "Wait",
-                  "Seconds": 10,
+                  "Seconds": 30,
                   "Next": "StartPacking"
                 },
                 "StartPacking": {
@@ -679,7 +679,7 @@ resources:
                 },
                 "WaitForDelivery": {
                   "Type": "Wait",
-                  "Seconds": 5,
+                  "Seconds": 30,
                   "Next": "StartDelivery"
                 },
                 "StartDelivery": {

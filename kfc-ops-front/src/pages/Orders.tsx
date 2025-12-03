@@ -270,68 +270,33 @@ const Orders = () => {
     pendingUpdates.current.add(orderId);
 
     try {
-      // Flow: PENDING -> RECEIVED -> COOKING -> COOKED -> PACKED -> DELIVERING -> COMPLETED
-      let result;
-      let nextStatus: string;
-
+      // WORKFLOW AUTOMATIZADO: Solo permitir aceptar la orden (PENDING -> RECEIVED)
+      // El resto de transiciones son automáticas vía Step Functions
+      
       if (backendStatus === "PENDING") {
-        nextStatus = "RECEIVED";
-        updateLocalOrderStatus(orderId, nextStatus); // Update UI immediately
-        result = await takeOrder.mutateAsync(orderId);
-        toast.success(`Orden aceptada → RECEIVED`);
-      } else if (backendStatus === "RECEIVED") {
-        nextStatus = "COOKING";
-        updateLocalOrderStatus(orderId, nextStatus);
-        result = await startCooking.mutateAsync(orderId);
-        toast.success(`Orden en cocina → COOKING`);
-      } else if (backendStatus === "COOKING") {
-        nextStatus = "COOKED";
-        updateLocalOrderStatus(orderId, nextStatus);
-        result = await finishCooking.mutateAsync(orderId);
-        toast.success(`Orden lista → COOKED`);
-      } else if (backendStatus === "COOKED") {
-        nextStatus = "PACKED";
-        updateLocalOrderStatus(orderId, nextStatus);
-        result = await packOrder.mutateAsync(orderId);
-        toast.success(`Orden empacada → PACKED`);
-      } else if (backendStatus === "PACKED") {
-        nextStatus = "DELIVERING";
-        updateLocalOrderStatus(orderId, nextStatus);
-        result = await startDelivery.mutateAsync(orderId);
-        toast.success(`Orden en camino → DELIVERING`);
-      } else if (backendStatus === "DELIVERING") {
-        nextStatus = "COMPLETED";
-        updateLocalOrderStatus(orderId, nextStatus);
-        result = await completeOrder.mutateAsync(orderId);
-        toast.success(`Orden completada → COMPLETED`);
-      } else if (
-        backendStatus === "COMPLETED" ||
-        backendStatus === "DELIVERED"
-      ) {
-        toast.info(`Esta orden ya está completada`);
+        // Solo permitir esta transición manual - tomar/aceptar la orden
+        updateLocalOrderStatus(orderId, "RECEIVED"); // Update UI immediately
+        const result = await takeOrder.mutateAsync(orderId);
+        toast.success(`Orden aceptada ✓ El flujo automático iniciará`);
+        
+        console.log(`[Workflow] Order ${orderId} accepted, Step Functions will handle rest`);
+        
+        // Clear pending flag after successful mutation
         pendingUpdates.current.delete(orderId);
-        return;
+
+        addNotification({
+          title: "Orden Aceptada",
+          message: `La orden iniciará cocción automáticamente en ${30 - 2}s`,
+          type: "order",
+        });
       } else {
-        toast.warning(`Estado desconocido: ${backendStatus}`);
+        // Todas las otras transiciones son AUTOMÁTICAS vía Step Functions
+        toast.info(`✨ Esta orden avanzará automáticamente: ${backendStatus} → Siguiente estado`);
+        toast.info("Espera 30 segundos por etapa (cocina, empaque, delivery)");
         pendingUpdates.current.delete(orderId);
-        return;
       }
-
-      console.log(
-        `[Workflow] Order ${orderId} transitioned to:`,
-        result?.status
-      );
-
-      // Clear pending flag after successful mutation
-      pendingUpdates.current.delete(orderId);
-
-      addNotification({
-        title: "Estado Actualizado",
-        message: `Orden actualizada a ${nextStatus}`,
-        type: "order",
-      });
     } catch (error: any) {
-      const errorMsg = error?.message || "Error al actualizar orden";
+      const errorMsg = error?.message || "Error al aceptar orden";
       toast.error(errorMsg);
       console.error("[Workflow] Error:", error);
 
@@ -347,55 +312,11 @@ const Orders = () => {
     // No drop target
     if (!over) return;
 
-    const orderId = active.id as string;
-    const dropZoneId = over.id as string;
-
-    // Find the order being dragged
-    const activeOrder = orders.find((o) => o.id === orderId);
-    if (!activeOrder) return;
-
-    const currentStatus = activeOrder.status;
-
-    // Check if dropped on a status zone (not on another order)
-    const statusZones: UIStatus[] = [
-      "pending",
-      "kitchen",
-      "packing",
-      "delivery",
-    ];
-    const targetStatus = statusZones.find((s) => dropZoneId === `zone-${s}`);
-
-    // If not dropped on a zone, or dropped on same status zone, do nothing
-    if (!targetStatus || targetStatus === currentStatus) {
-      return;
-    }
-
-    // Validate transition: only allow moving to the NEXT status
-    const expectedNextStatus = validTransitions[currentStatus];
-
-    if (targetStatus !== expectedNextStatus) {
-      // Invalid transition
-      const statusNames: Record<UIStatus, string> = {
-        pending: "Pendientes",
-        kitchen: "Cocina",
-        packing: "Empaque",
-        delivery: "Delivery",
-      };
-
-      if (expectedNextStatus) {
-        toast.error(
-          `Solo puedes mover de ${statusNames[currentStatus]} a ${statusNames[expectedNextStatus]}`
-        );
-      } else {
-        toast.error(
-          `Las órdenes en ${statusNames[currentStatus]} no pueden moverse`
-        );
-      }
-      return;
-    }
-
-    // Valid transition - update status
-    handleStatusChange(orderId);
+    // WORKFLOW AUTOMATIZADO: No permitir drag & drop manual
+    // Las transiciones son automáticas vía Step Functions
+    toast.info("⚙️ Workflow automatizado activo");
+    toast.info("Las órdenes avanzan automáticamente sin intervención manual");
+    return;
   };
 
   const filteredOrders = orders.filter(
@@ -424,9 +345,7 @@ const Orders = () => {
             Panel de Órdenes en Tiempo Real
           </h1>
           <p className="text-muted-foreground mt-2">
-            {viewMode === "tabs"
-              ? "Vista por pestañas - haz clic en los botones para avanzar"
-              : "Vista Kanban - arrastra las órdenes entre columnas"}
+            ⚙️ Workflow Automatizado - Solo acepta órdenes, el resto es automático via Step Functions
           </p>
         </div>
         <div className="flex items-center gap-3">

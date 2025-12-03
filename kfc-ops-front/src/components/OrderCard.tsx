@@ -175,7 +175,8 @@ export const OrderCard = ({
             <Clock className="w-3 h-3 mr-1" />
             {minutesAgo} min
           </div>
-          {!isFinalStatus && (
+          {normalizedApiStatus === "PENDING" ? (
+            // Solo mostrar botón para PENDING (aceptar orden)
             <Button
               size="sm"
               onClick={handleNextStatus}
@@ -185,9 +186,15 @@ export const OrderCard = ({
               {isUpdating ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
-                nextActionLabel
+                "Aceptar Orden"
               )}
             </Button>
+          ) : isFinalStatus ? (
+            // Para órdenes completadas
+            <div className="text-xs text-green-600 font-semibold">✓ Completada</div>
+          ) : (
+            // Para órdenes en progreso (no mostrar botón, solo info)
+            <div className="text-xs text-blue-600 font-semibold">⚙️ Automático</div>
           )}
         </div>
       </div>
