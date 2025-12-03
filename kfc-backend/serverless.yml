@@ -607,6 +607,7 @@ resources:
       Properties:
         StateMachineType: STANDARD
         RoleArn: arn:aws:iam::595645243021:role/LabRole
+        StateMachineName: ${self:service}-${self:provider.stage}-OrderWorkflowStateMachine
         DefinitionString: !Sub
           - |
             {
