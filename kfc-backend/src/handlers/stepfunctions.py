@@ -68,13 +68,17 @@ def sfn_receive_order_handler(event, context):
 def sfn_cook_order_handler(event, context):
     """Step Functions task: Mark order as cooking"""
     try:
-        print(f"SFN Cooking: {json.dumps(event)}")
+        print(f"SFN Cooking - Raw Event: {json.dumps(event)}")
 
         order_id = event.get('orderId')
         tenant_id = event.get('tenantId')
 
+        print(f"SFN Cooking - Extracted: orderId={order_id}, tenantId={tenant_id}")
+
         if not order_id or not tenant_id:
-            raise Exception('Missing orderId or tenantId')
+            error_msg = f'Missing orderId or tenantId. Event: {json.dumps(event)}'
+            print(f"SFN Cooking ERROR: {error_msg}")
+            raise Exception(error_msg)
 
         table = get_orders_table()
         order = get_item(table, {
@@ -83,7 +87,11 @@ def sfn_cook_order_handler(event, context):
         })
 
         if not order:
-            raise Exception(f'Order {order_id} not found')
+            error_msg = f'Order {order_id} not found for tenant {tenant_id}'
+            print(f"SFN Cooking ERROR: {error_msg}")
+            raise Exception(error_msg)
+
+        print(f"SFN Cooking - Found order, current status: {order.get('status')}")
 
         now = datetime.utcnow().isoformat()
 
@@ -101,6 +109,8 @@ def sfn_cook_order_handler(event, context):
             }
         )
 
+        print(f"SFN Cooking - Updated order to COOKING status")
+
         broadcast_order_update(
             tenant_id=tenant_id,
             order_id=order_id,
@@ -108,29 +118,38 @@ def sfn_cook_order_handler(event, context):
             order_data=order
         )
 
-        # Return input data preserved for next state
-        return {
+        print(f"SFN Cooking - Broadcasted update")
+
+        result = {
             'orderId': order_id,
             'tenantId': tenant_id,
             'status': OrderStatus.COOKING.value,
             'cookingStartedAt': now
         }
+        
+        print(f"SFN Cooking - Returning: {json.dumps(result)}")
+        return result
 
     except Exception as e:
-        print(f"SFN Cooking error: {str(e)}")
-        raise
+        error_msg = f"SFN Cooking error: {str(e)}"
+        print(error_msg)
+        raise Exception(error_msg)
 
 
 def sfn_pack_order_handler(event, context):
     """Step Functions task: Mark order as packing"""
     try:
-        print(f"SFN Packing: {json.dumps(event)}")
+        print(f"SFN Packing - Raw Event: {json.dumps(event)}")
 
         order_id = event.get('orderId')
         tenant_id = event.get('tenantId')
 
+        print(f"SFN Packing - Extracted: orderId={order_id}, tenantId={tenant_id}")
+
         if not order_id or not tenant_id:
-            raise Exception('Missing orderId or tenantId')
+            error_msg = f'Missing orderId or tenantId. Event: {json.dumps(event)}'
+            print(f"SFN Packing ERROR: {error_msg}")
+            raise Exception(error_msg)
 
         table = get_orders_table()
         order = get_item(table, {
@@ -139,7 +158,11 @@ def sfn_pack_order_handler(event, context):
         })
 
         if not order:
-            raise Exception(f'Order {order_id} not found')
+            error_msg = f'Order {order_id} not found for tenant {tenant_id}'
+            print(f"SFN Packing ERROR: {error_msg}")
+            raise Exception(error_msg)
+
+        print(f"SFN Packing - Found order, current status: {order.get('status')}")
 
         now = datetime.utcnow().isoformat()
 
@@ -157,6 +180,8 @@ def sfn_pack_order_handler(event, context):
             }
         )
 
+        print(f"SFN Packing - Updated order to PACKING status")
+
         broadcast_order_update(
             tenant_id=tenant_id,
             order_id=order_id,
@@ -164,29 +189,38 @@ def sfn_pack_order_handler(event, context):
             order_data=order
         )
 
-        # Return input data preserved for next state
-        return {
+        print(f"SFN Packing - Broadcasted update")
+
+        result = {
             'orderId': order_id,
             'tenantId': tenant_id,
             'status': OrderStatus.PACKING.value,
             'packingStartedAt': now
         }
+        
+        print(f"SFN Packing - Returning: {json.dumps(result)}")
+        return result
 
     except Exception as e:
-        print(f"SFN Packing error: {str(e)}")
-        raise
+        error_msg = f"SFN Packing error: {str(e)}"
+        print(error_msg)
+        raise Exception(error_msg)
 
 
 def sfn_deliver_order_handler(event, context):
     """Step Functions task: Mark order as ready for delivery"""
     try:
-        print(f"SFN Delivery: {json.dumps(event)}")
+        print(f"SFN Delivery - Raw Event: {json.dumps(event)}")
 
         order_id = event.get('orderId')
         tenant_id = event.get('tenantId')
 
+        print(f"SFN Delivery - Extracted: orderId={order_id}, tenantId={tenant_id}")
+
         if not order_id or not tenant_id:
-            raise Exception('Missing orderId or tenantId')
+            error_msg = f'Missing orderId or tenantId. Event: {json.dumps(event)}'
+            print(f"SFN Delivery ERROR: {error_msg}")
+            raise Exception(error_msg)
 
         table = get_orders_table()
         order = get_item(table, {
@@ -195,7 +229,11 @@ def sfn_deliver_order_handler(event, context):
         })
 
         if not order:
-            raise Exception(f'Order {order_id} not found')
+            error_msg = f'Order {order_id} not found for tenant {tenant_id}'
+            print(f"SFN Delivery ERROR: {error_msg}")
+            raise Exception(error_msg)
+
+        print(f"SFN Delivery - Found order, current status: {order.get('status')}")
 
         now = datetime.utcnow().isoformat()
 
@@ -213,6 +251,8 @@ def sfn_deliver_order_handler(event, context):
             }
         )
 
+        print(f"SFN Delivery - Updated order to DELIVERY status")
+
         broadcast_order_update(
             tenant_id=tenant_id,
             order_id=order_id,
@@ -220,28 +260,38 @@ def sfn_deliver_order_handler(event, context):
             order_data=order
         )
 
-        return {
+        print(f"SFN Delivery - Broadcasted update")
+
+        result = {
             'orderId': order_id,
             'tenantId': tenant_id,
             'status': OrderStatus.DELIVERY.value,
             'deliveryStartedAt': now
         }
+        
+        print(f"SFN Delivery - Returning: {json.dumps(result)}")
+        return result
 
     except Exception as e:
-        print(f"SFN Delivery error: {str(e)}")
-        raise
+        error_msg = f"SFN Delivery error: {str(e)}"
+        print(error_msg)
+        raise Exception(error_msg)
 
 
 def sfn_complete_order_handler(event, context):
     """Step Functions task: Complete order"""
     try:
-        print(f"SFN CompleteOrder: {json.dumps(event)}")
+        print(f"SFN CompleteOrder - Raw Event: {json.dumps(event)}")
 
         order_id = event.get('orderId')
         tenant_id = event.get('tenantId')
 
+        print(f"SFN CompleteOrder - Extracted: orderId={order_id}, tenantId={tenant_id}")
+
         if not order_id or not tenant_id:
-            raise Exception('Missing orderId or tenantId')
+            error_msg = f'Missing orderId or tenantId. Event: {json.dumps(event)}'
+            print(f"SFN CompleteOrder ERROR: {error_msg}")
+            raise Exception(error_msg)
 
         table = get_orders_table()
         order = get_item(table, {
@@ -250,7 +300,11 @@ def sfn_complete_order_handler(event, context):
         })
 
         if not order:
-            raise Exception(f'Order {order_id} not found')
+            error_msg = f'Order {order_id} not found for tenant {tenant_id}'
+            print(f"SFN CompleteOrder ERROR: {error_msg}")
+            raise Exception(error_msg)
+
+        print(f"SFN CompleteOrder - Found order, current status: {order.get('status')}")
 
         now = datetime.utcnow().isoformat()
 
@@ -268,6 +322,8 @@ def sfn_complete_order_handler(event, context):
             }
         )
 
+        print(f"SFN CompleteOrder - Updated order to COMPLETED status")
+
         broadcast_order_update(
             tenant_id=tenant_id,
             order_id=order_id,
@@ -275,15 +331,21 @@ def sfn_complete_order_handler(event, context):
             order_data=order
         )
 
-        return {
+        print(f"SFN CompleteOrder - Broadcasted update")
+
+        result = {
             'orderId': order_id,
             'tenantId': tenant_id,
             'status': OrderStatus.COMPLETED.value,
             'completedAt': now
         }
+        
+        print(f"SFN CompleteOrder - Returning: {json.dumps(result)}")
+        return result
 
     except Exception as e:
-        print(f"SFN CompleteOrder error: {str(e)}")
-        raise
+        error_msg = f"SFN CompleteOrder error: {str(e)}"
+        print(error_msg)
+        raise Exception(error_msg)
 
 
