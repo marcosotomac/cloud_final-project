@@ -48,7 +48,6 @@ provider:
     ORDER_EVENTS_BUS: kfc-events-${self:provider.stage}
     ORDERS_QUEUE_URL: !Ref OrdersQueue
     NOTIFICATIONS_TOPIC_ARN: !Ref NotificationsTopic
-    STATE_MACHINE_ARN: !Ref OrderWorkflowStateMachine
     ASSETS_BUCKET: kfc-assets-${self:provider.stage}-595645243021
     WEBSOCKET_API_ENDPOINT:
       Fn::Sub: "https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}"
@@ -599,6 +598,12 @@ resources:
     # ==================== STEP FUNCTIONS STATE MACHINE ====================
     OrderWorkflowStateMachine:
       Type: AWS::StepFunctions::StateMachine
+      DependsOn:
+        - SfnReceiveOrderLambdaFunction
+        - SfnCookingLambdaFunction
+        - SfnPackingLambdaFunction
+        - SfnDeliveryLambdaFunction
+        - SfnCompleteOrderLambdaFunction
       Properties:
         StateMachineType: STANDARD
         RoleArn: arn:aws:iam::595645243021:role/LabRole
@@ -720,11 +725,11 @@ resources:
                 }
               }
             }
-          - SfnReceiveOrderArn: !GetAtt SfnReceiveOrderLambdaFunction.Arn
-            SfnCookingArn: !GetAtt SfnCookingLambdaFunction.Arn
-            SfnPackingArn: !GetAtt SfnPackingLambdaFunction.Arn
-            SfnDeliveryArn: !GetAtt SfnDeliveryLambdaFunction.Arn
-            SfnCompleteOrderArn: !GetAtt SfnCompleteOrderLambdaFunction.Arn
+          - SfnReceiveOrderArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnReceiveOrder"
+            SfnCookingArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnCooking"
+            SfnPackingArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnPacking"
+            SfnDeliveryArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnDelivery"
+            SfnCompleteOrderArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-sfnCompleteOrder"
 
     # ==================== DYNAMODB TABLES ====================
     OrdersTable:

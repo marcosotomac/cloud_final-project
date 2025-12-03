@@ -141,7 +141,18 @@ def start_order_workflow(
     Returns:
         Step Functions response
     """
-    state_machine_arn = os.environ.get('STATE_MACHINE_ARN')
+    # Build the State Machine ARN dynamically to avoid circular dependency
+    region = os.environ.get('REGION', 'us-east-1')
+    stage = os.environ.get('STAGE', 'dev')
+    # AWS Account ID from STS
+    try:
+        sts = boto3.client('sts')
+        account_id = sts.get_caller_identity()['Account']
+    except:
+        # Fallback if STS fails
+        account_id = '595645243021'
+    
+    state_machine_arn = f"arn:aws:states:{region}:{account_id}:stateMachine:kfc-core-{stage}-OrderWorkflowStateMachine"
 
     input_data = {
         'tenantId': tenant_id,
